@@ -55,4 +55,3 @@ dmypy.json
 # Project specific
 *.log
 *.tmp
-uv.lock

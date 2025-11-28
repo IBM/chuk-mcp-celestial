@@ -22,6 +22,11 @@
 - Full async/await support with httpx
 - Comprehensive error handling
 
+🔗 **Multi-Server Integration:**
+- Works seamlessly with [time](https://time.chukai.io/mcp) and [weather](https://weather.chukai.io/mcp) servers
+- Combine celestial + time + weather for comprehensive astronomical intelligence
+- Answer complex questions like "Will the moon be visible tonight with current weather?"
+
 ✅ **Production Ready:**
 - 70%+ test coverage with pytest
 - GitHub Actions CI/CD
@@ -388,6 +393,119 @@ make security
 # Run all checks
 make check
 ```
+
+## Multi-Server Integration
+
+The **chuk-mcp-celestial** server works beautifully with other MCP servers to answer complex questions:
+
+### Recommended Server Combinations
+
+**Celestial + Time + Weather = Complete Astronomical Intelligence**
+
+```json
+{
+  "mcpServers": {
+    "celestial": {
+      "url": "https://celestial.chukai.io/mcp"
+    },
+    "time": {
+      "url": "https://time.chukai.io/mcp"
+    },
+    "weather": {
+      "url": "https://weather.chukai.io/mcp"
+    }
+  }
+}
+```
+
+### Example Multi-Server Queries
+
+**1. Moon Visibility with Location Intelligence**
+```
+Q: "Where will the moon be in Leavenheath Suffolk tonight at 10:30pm?
+    Will it be visible and what phase will it be?"
+
+Uses:
+- weather server → geocode_location (find coordinates)
+- celestial server → get_sun_moon_data (moon position & phase)
+- AI reasoning → combine data for comprehensive answer
+
+Result:
+✓ Moon will be visible in western sky at 22:30 GMT
+✓ Phase: Waxing Gibbous (52% illuminated)
+✓ Position: Descending from upper transit at 18:21
+```
+
+**2. Sunrise + Current Time**
+```
+Q: "When does the sun rise in London and what time is it there now?"
+
+Uses:
+- time server → get_time_for_timezone (current time in Europe/London)
+- celestial server → get_sun_moon_data (sunrise time)
+- weather server → geocode_location (confirm location)
+
+Result:
+✓ Current time: 21:43:19 GMT
+✓ Sunrise tomorrow: 07:41 GMT
+✓ Time until sunrise: 9h 58m
+```
+
+**3. Eclipse + Weather Forecast**
+```
+Q: "Will the next solar eclipse be visible from New York, and what will the weather be like?"
+
+Uses:
+- celestial server → get_solar_eclipses_by_year, get_solar_eclipse_by_date
+- weather server → get_weather_forecast (for eclipse date)
+- time server → timezone conversions
+
+Result:
+✓ Eclipse visibility and timing
+✓ Weather forecast for eclipse day
+✓ Optimal viewing conditions
+```
+
+### Why Multi-Server Works Better
+
+| Single Server | Multi-Server Combination |
+|---------------|-------------------------|
+| "Moon rises at 12:55 UTC" | "Moon rises at 12:55 (7:55am local time)" |
+| "Sunrise at 07:41" | "Sunrise at 07:41, currently 21:43, sunset was at 15:56" |
+| "Eclipse on 2024-4-8" | "Eclipse on 2024-4-8, weather: partly cloudy, 60% visibility chance" |
+
+### Server Responsibilities
+
+**Celestial Server (this server):**
+- 🌙 Moon phases, positions, rise/set times
+- ☀️ Sun rise/set times, twilight, transit
+- 🌑 Solar eclipse predictions and local circumstances
+- 🌍 Earth's seasons and orbital events
+
+**Time Server:**
+- ⏰ Precise current time with NTP synchronization
+- 🌐 Timezone conversions and DST handling
+- 📅 Date/time calculations
+
+**Weather Server:**
+- 🗺️ Geocoding (convert place names to coordinates)
+- ⛅ Weather forecasts and current conditions
+- 📊 Historical weather data
+- 💨 Air quality information
+
+### Testing Multi-Server Setup
+
+```bash
+# Test all three servers together
+uv run mcp-cli --server celestial,time,weather \
+  --provider openai \
+  --model gpt-4o-mini
+```
+
+Then ask questions like:
+- "When is sunset in Tokyo and what time is it there now?"
+- "What phase is the moon tonight and will it be cloudy?"
+- "When is the next eclipse visible from London and what's the forecast?"
 
 ## Data Source
 
