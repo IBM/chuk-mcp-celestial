@@ -9,7 +9,16 @@ from chuk_mcp_celestial.providers.factory import (
     _provider_cache,
 )
 from chuk_mcp_celestial.providers.navy import NavyAPIProvider
-from chuk_mcp_celestial.providers.skyfield_provider import SkyfieldProvider
+
+# Check if Skyfield is available
+try:
+    from chuk_mcp_celestial.providers.skyfield_provider import (
+        SkyfieldProvider,
+        SKYFIELD_AVAILABLE,
+    )
+except ImportError:
+    SKYFIELD_AVAILABLE = False
+    SkyfieldProvider = None  # type: ignore
 
 
 class TestProviderType:
@@ -43,6 +52,7 @@ class TestGetProvider:
         provider = get_provider("navy_api")
         assert isinstance(provider, NavyAPIProvider)
 
+    @pytest.mark.skipif(not SKYFIELD_AVAILABLE, reason="Skyfield not installed")
     def test_get_skyfield_provider(self):
         """Test getting Skyfield provider."""
         provider = get_provider("skyfield")
@@ -53,7 +63,10 @@ class TestGetProvider:
         provider = get_provider()
         assert provider is not None
         # Should be either Navy or Skyfield
-        assert isinstance(provider, (NavyAPIProvider, SkyfieldProvider))
+        if SKYFIELD_AVAILABLE:
+            assert isinstance(provider, (NavyAPIProvider, SkyfieldProvider))
+        else:
+            assert isinstance(provider, NavyAPIProvider)
 
     def test_provider_caching(self):
         """Test that providers are cached."""
@@ -62,6 +75,7 @@ class TestGetProvider:
         # Should return same instance
         assert provider1 is provider2
 
+    @pytest.mark.skipif(not SKYFIELD_AVAILABLE, reason="Skyfield not installed")
     def test_different_providers_not_cached_together(self):
         """Test that different provider types have separate cache entries."""
         navy = get_provider("navy_api")
@@ -75,6 +89,7 @@ class TestGetProvider:
         with pytest.raises(ValueError, match="Unknown provider type"):
             get_provider("invalid_provider")
 
+    @pytest.mark.skipif(not SKYFIELD_AVAILABLE, reason="Skyfield not installed")
     def test_cache_contains_entries(self):
         """Test that cache is populated after provider creation."""
         _provider_cache.clear()

@@ -2,7 +2,16 @@
 
 import pytest
 
-pytestmark = pytest.mark.asyncio
+# Check if Skyfield is available
+try:
+    from chuk_mcp_celestial.providers.skyfield_provider import SKYFIELD_AVAILABLE
+except ImportError:
+    SKYFIELD_AVAILABLE = False
+
+pytestmark = [
+    pytest.mark.asyncio,
+    pytest.mark.skipif(not SKYFIELD_AVAILABLE, reason="Skyfield not installed"),
+]
 
 
 class TestSkyfieldVFS:
