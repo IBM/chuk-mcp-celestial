@@ -29,18 +29,20 @@ jobs:
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
 
+    - name: Create virtual environment
+      run: uv venv
+
     - name: Install dependencies
-      run: |
-        uv sync --extra dev
+      run: uv pip install -e ".[dev]"
 
     - name: Run linting
-      run: |
-        uv run ruff check .
-        uv run ruff format --check .
+      run: make lint
 
     - name: Run type checking
-      run: |
-        uv run mypy src --ignore-missing-imports
+      run: make typecheck
+
+    - name: Run security checks
+      run: make security
 
     - name: Run tests with coverage
       run: |

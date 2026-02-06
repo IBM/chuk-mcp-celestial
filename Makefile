@@ -89,13 +89,23 @@ clean-all: clean-pyc clean-build clean-test
 
 # Install package
 install:
-	@echo "Installing package..."
-	pip install .
+	@if command -v uv >/dev/null 2>&1; then \
+		echo "Installing with uv..."; \
+		uv pip install .; \
+	else \
+		echo "Installing with pip..."; \
+		pip install .; \
+	fi
 
 # Install package in development mode
 dev-install:
-	@echo "Installing package in development mode..."
-	pip install -e .
+	@if command -v uv >/dev/null 2>&1; then \
+		echo "Installing in editable mode with dev dependencies (using uv)..."; \
+		uv pip install -e ".[dev]"; \
+	else \
+		echo "Installing in editable mode with dev dependencies (using pip)..."; \
+		pip install -e ".[dev]"; \
+	fi
 
 # Run tests
 test:

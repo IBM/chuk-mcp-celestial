@@ -1,10 +1,10 @@
 # chuk-mcp-celestial
 
-[![PyPI version](https://badge.fury.io/py/chuk-mcp-celestial.svg)](https://badge.fury.io/py/chuk-mcp-celestial)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **MCP server for US Navy astronomical and celestial data** - The definitive celestial MCP server providing moon phases, solar eclipses, sun/moon rise/set times, and Earth's seasons from the official US Navy Astronomical Applications API.
+
+> This is a demonstration project provided as-is for learning and testing purposes.
 
 🌐 **[Try it now - Hosted version available!](https://celestial.chukai.io/mcp)** - No installation required.
 
@@ -33,7 +33,7 @@
 - Combine celestial + time + weather for comprehensive astronomical intelligence
 - Answer complex questions like "Will the moon be visible tonight with current weather?"
 
-✅ **Production Ready:**
+✅ **Quality Assured:**
 - 70%+ test coverage with pytest
 - GitHub Actions CI/CD
 - Automated releases to PyPI
@@ -858,17 +858,14 @@ Contributions are welcome! Please:
 
 ## License
 
-MIT License - see LICENSE file for details
+Apache License 2.0 - See LICENSE for details.
 
 ## Credits
 
-- Built on [chuk-mcp-server](https://github.com/yourusername/chuk-mcp-server)
+- Built on chuk-mcp-server
 - Data provided by [US Navy Astronomical Applications Department](https://aa.usno.navy.mil/)
-- Inspired by [chuk-mcp-open-meteo](https://github.com/yourusername/chuk-mcp-open-meteo)
 
 ## Links
 
-- [PyPI Package](https://pypi.org/project/chuk-mcp-celestial/)
-- [GitHub Repository](https://github.com/yourusername/chuk-mcp-celestial)
 - [US Navy API Documentation](https://aa.usno.navy.mil/data/api)
 - [MCP Protocol](https://modelcontextprotocol.io/)

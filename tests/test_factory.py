@@ -6,6 +6,8 @@ from unittest.mock import patch
 from chuk_mcp_celestial.providers.factory import (
     ProviderType,
     get_provider,
+    get_provider_for_tool,
+    clear_provider_cache,
     _provider_cache,
 )
 from chuk_mcp_celestial.providers.navy import NavyAPIProvider
@@ -116,3 +118,46 @@ class TestGetProvider:
 
         provider = get_provider(None)
         assert isinstance(provider, NavyAPIProvider)
+
+
+class TestGetProviderForTool:
+    """Test get_provider_for_tool function."""
+
+    def setup_method(self):
+        """Clear cache before each test."""
+        _provider_cache.clear()
+
+    def test_known_tool_name(self):
+        """Test getting provider for known tool name."""
+        provider = get_provider_for_tool("moon_phases")
+        assert provider is not None
+
+    def test_unknown_tool_name(self):
+        """Test getting provider for unknown tool name falls back to default."""
+        # Unknown tool should use default provider
+        provider = get_provider_for_tool("unknown_tool")
+        assert provider is not None
+        # Should be Navy API (default) or Skyfield if that's the configured default
+        assert isinstance(provider, NavyAPIProvider) or (
+            SKYFIELD_AVAILABLE and isinstance(provider, SkyfieldProvider)
+        )
+
+
+class TestClearProviderCache:
+    """Test clear_provider_cache function."""
+
+    def test_clear_empty_cache(self):
+        """Test clearing an empty cache."""
+        _provider_cache.clear()
+        clear_provider_cache()
+        assert len(_provider_cache) == 0
+
+    def test_clear_populated_cache(self):
+        """Test clearing a populated cache."""
+        # Populate cache
+        get_provider("navy_api")
+        assert len(_provider_cache) > 0
+
+        # Clear it
+        clear_provider_cache()
+        assert len(_provider_cache) == 0
