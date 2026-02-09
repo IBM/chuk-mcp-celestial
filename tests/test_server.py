@@ -549,7 +549,7 @@ class TestInitArtifactStore:
             for key in [
                 "AWS_ACCESS_KEY_ID",
                 "AWS_SECRET_ACCESS_KEY",
-                "CHUK_ARTIFACTS_BUCKET",
+                "BUCKET_NAME",
             ]:
                 os.environ.pop(key, None)
             result = _init_artifact_store()
@@ -564,7 +564,7 @@ class TestInitArtifactStore:
             "CHUK_ARTIFACTS_PROVIDER": "s3",
             "AWS_ACCESS_KEY_ID": "test-key",
             "AWS_SECRET_ACCESS_KEY": "test-secret",
-            "CHUK_ARTIFACTS_BUCKET": "test-bucket",
+            "BUCKET_NAME": "test-bucket",
         }
         with patch.dict(os.environ, env, clear=False):
             with patch(
@@ -639,12 +639,12 @@ class TestInitArtifactStore:
 
     def test_redis_session_provider(self):
         """Test that redis URL triggers redis session provider."""
-        from unittest.mock import patch, MagicMock, call
+        from unittest.mock import patch, MagicMock
 
         mock_store = MagicMock()
         env = {
             "CHUK_ARTIFACTS_PROVIDER": "memory",
-            "CHUK_REDIS_URL": "redis://localhost:6379",
+            "REDIS_URL": "redis://localhost:6379",
         }
         with patch.dict(os.environ, env, clear=False):
             with patch(

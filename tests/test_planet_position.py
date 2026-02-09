@@ -497,7 +497,7 @@ class TestSkyfieldEdgeCases:
     @pytest.mark.asyncio
     async def test_eph_property_error(self):
         """Test eph property error handling."""
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
 
         provider = SkyfieldProvider(storage_backend="memory")
         provider._eph = None  # Reset

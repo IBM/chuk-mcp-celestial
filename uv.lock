@@ -203,6 +203,15 @@ wheels = [
 ]
 
 [[package]]
+name = "async-timeout"
+version = "5.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/ae/136395dfbfe00dfc94da3f3e136d0b13f394cba8f4841120e34226265780/async_timeout-5.0.1.tar.gz", hash = "sha256:d9321a7a3d5a6a5e187e824d2fa0793ce379a202935782d555d6e9d2735677d3", size = 9274, upload-time = "2024-11-06T16:41:39.6Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fe/ba/e2081de779ca30d473f21f5b30e0e737c438205440784c7dfc81efc2b029/async_timeout-5.0.1-py3-none-any.whl", hash = "sha256:39e3809566ff85354557ec2398b55e096c8364bacac9405a7a1fa429e77fe76c", size = 6233, upload-time = "2024-11-06T16:41:37.9Z" },
+]
+
+[[package]]
 name = "asyncio"
 version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -323,6 +332,25 @@ wheels = [
 ]
 
 [[package]]
+name = "chuk-artifacts"
+version = "0.10.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aioboto3" },
+    { name = "asyncio" },
+    { name = "chuk-sessions" },
+    { name = "chuk-virtual-fs" },
+    { name = "dotenv" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "redis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0d/6f/23177e42de284731525cfd69bb6259ba530486c830614be54de5d248af08/chuk_artifacts-0.10.1.tar.gz", hash = "sha256:76ff388f02ee4f4ac43a9aa92f9039ec835c103f6c2b486525254a29c740c62f", size = 150786, upload-time = "2026-01-07T16:42:26.969Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/fa/96a188903c571a288d9c941cd8c7d583bfa80b66714fc5abec92203d830a/chuk_artifacts-0.10.1-py3-none-any.whl", hash = "sha256:dded5dc59e7216eee42fc35342ad51d0575fc5279ad59d92b4166e7cda1d91ab", size = 74215, upload-time = "2026-01-07T16:42:24.627Z" },
+]
+
+[[package]]
 name = "chuk-mcp"
 version = "0.9.1"
 source = { registry = "https://pypi.org/simple" }
@@ -341,6 +369,7 @@ name = "chuk-mcp-celestial"
 version = "0.2.1"
 source = { editable = "." }
 dependencies = [
+    { name = "chuk-artifacts" },
     { name = "chuk-mcp-server" },
     { name = "chuk-virtual-fs" },
     { name = "httpx" },
@@ -354,6 +383,7 @@ all = [
     { name = "black" },
     { name = "boto3" },
     { name = "mypy" },
+    { name = "numpy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -376,6 +406,7 @@ dev = [
 skyfield = [
     { name = "aioboto3" },
     { name = "boto3" },
+    { name = "numpy" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "skyfield" },
@@ -387,11 +418,13 @@ requires-dist = [
     { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.7.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=24.0.0" },
     { name = "boto3", marker = "extra == 'skyfield'", specifier = ">=1.28.0" },
+    { name = "chuk-artifacts", specifier = ">=0.5" },
     { name = "chuk-mcp-celestial", extras = ["dev", "skyfield"], marker = "extra == 'all'" },
     { name = "chuk-mcp-server", specifier = ">=0.8" },
     { name = "chuk-virtual-fs", specifier = ">=0.3.1" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8.0" },
+    { name = "numpy", marker = "extra == 'skyfield'", specifier = ">=1.24.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
@@ -1790,6 +1823,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/da/92/1446574745d74df0c92e6aa4a7b0b3130706a4142b2d1a5869f2eaa423c6/pyyaml-6.0.3-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:16249ee61e95f858e83976573de0f5b2893b3677ba71c9dd36b9cf8be9ac6d65", size = 829923, upload-time = "2025-09-25T21:32:54.537Z" },
     { url = "https://files.pythonhosted.org/packages/f0/7a/1c7270340330e575b92f397352af856a8c06f230aa3e76f86b39d01b416a/pyyaml-6.0.3-cp314-cp314t-win_amd64.whl", hash = "sha256:4ad1906908f2f5ae4e5a8ddfce73c320c2a1429ec52eafd27138b7f1cbe341c9", size = 174062, upload-time = "2025-09-25T21:32:55.767Z" },
     { url = "https://files.pythonhosted.org/packages/f1/12/de94a39c2ef588c7e6455cfbe7343d3b2dc9d6b6b2f40c4c6565744c873d/pyyaml-6.0.3-cp314-cp314t-win_arm64.whl", hash = "sha256:ebc55a14a21cb14062aa4162f906cd962b28e2e9ea38f9b4391244cd8de4ae0b", size = 149341, upload-time = "2025-09-25T21:32:56.828Z" },
+]
+
+[[package]]
+name = "redis"
+version = "7.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "async-timeout", marker = "python_full_version < '3.11.3'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f7/80/2971931d27651affa88a44c0ad7b8c4a19dc29c998abb20b23868d319b59/redis-7.1.1.tar.gz", hash = "sha256:a2814b2bda15b39dad11391cc48edac4697214a8a5a4bd10abe936ab4892eb43", size = 4800064, upload-time = "2026-02-09T18:39:40.292Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/29/55/1de1d812ba1481fa4b37fb03b4eec0fcb71b6a0d44c04ea3482eb017600f/redis-7.1.1-py3-none-any.whl", hash = "sha256:f77817f16071c2950492c67d40b771fa493eb3fccc630a424a10976dbb794b7a", size = 356057, upload-time = "2026-02-09T18:39:38.602Z" },
 ]
 
 [[package]]
