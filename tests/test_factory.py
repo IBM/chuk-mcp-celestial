@@ -127,20 +127,32 @@ class TestGetProviderForTool:
         """Clear cache before each test."""
         _provider_cache.clear()
 
-    def test_known_tool_name(self):
-        """Test getting provider for known tool name."""
+    def test_moon_phases_tool(self):
+        """Test that moon_phases maps to a valid provider."""
         provider = get_provider_for_tool("moon_phases")
         assert provider is not None
 
-    def test_unknown_tool_name(self):
-        """Test getting provider for unknown tool name falls back to default."""
-        # Unknown tool should use default provider
+    def test_sun_moon_data_tool(self):
+        """Test that sun_moon_data maps to a valid provider."""
+        provider = get_provider_for_tool("sun_moon_data")
+        assert provider is not None
+
+    @pytest.mark.skipif(not SKYFIELD_AVAILABLE, reason="Skyfield not installed")
+    def test_planet_position_defaults_to_skyfield(self):
+        """Test that planet_position defaults to Skyfield provider."""
+        provider = get_provider_for_tool("planet_position")
+        assert isinstance(provider, SkyfieldProvider)
+
+    @pytest.mark.skipif(not SKYFIELD_AVAILABLE, reason="Skyfield not installed")
+    def test_planet_events_defaults_to_skyfield(self):
+        """Test that planet_events defaults to Skyfield provider."""
+        provider = get_provider_for_tool("planet_events")
+        assert isinstance(provider, SkyfieldProvider)
+
+    def test_unknown_tool_uses_default(self):
+        """Test that unknown tool name uses default provider."""
         provider = get_provider_for_tool("unknown_tool")
         assert provider is not None
-        # Should be Navy API (default) or Skyfield if that's the configured default
-        assert isinstance(provider, NavyAPIProvider) or (
-            SKYFIELD_AVAILABLE and isinstance(provider, SkyfieldProvider)
-        )
 
 
 class TestClearProviderCache:

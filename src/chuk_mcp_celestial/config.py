@@ -122,6 +122,16 @@ class ProviderConfig:
         _providers_yaml.get("earth_seasons", DEFAULT_PROVIDER),
     )
 
+    # Planet tools default to Skyfield (Navy API doesn't support planets)
+    PLANET_POSITION_PROVIDER = os.getenv(
+        "CELESTIAL_PLANET_POSITION_PROVIDER",
+        _providers_yaml.get("planet_position", "skyfield"),
+    )
+    PLANET_EVENTS_PROVIDER = os.getenv(
+        "CELESTIAL_PLANET_EVENTS_PROVIDER",
+        _providers_yaml.get("planet_events", "skyfield"),
+    )
+
 
 class SkyfieldConfig:
     """Configuration for Skyfield provider.

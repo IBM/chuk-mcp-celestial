@@ -37,6 +37,26 @@ Advanced eclipse planning tool that:
 - Checks eclipse visibility from multiple locations
 - Provides detailed local circumstances for each location
 
+### `05_planet_position.py`
+Planet position queries:
+- Where is Mars tonight? (altitude, azimuth, magnitude, constellation)
+- Survey all 8 planets at once
+- Track a planet across the night (hourly positions)
+- Same planet from different cities worldwide
+
+### `06_planet_events.py`
+Planet rise/set/transit times:
+- When does Jupiter rise and set?
+- Events in local time with timezone and DST
+- All planets rise/set/transit for one day
+- Venus as morning or evening star
+
+### `07_artifact_storage.py`
+Computation result storage via chuk-artifacts:
+- Storage without backend (graceful degradation)
+- Storage with mock backend (metadata, filenames)
+- Error handling (store failures don't break tools)
+
 ## Using with MCP
 
 To use this server with an MCP client (like Claude Desktop), you don't need to run these examples. Instead, configure the server in your MCP client settings:
@@ -56,3 +76,6 @@ Then you can ask the AI assistant questions like:
 - "What time does the sun rise in Seattle tomorrow?"
 - "Are there any solar eclipses visible from New York in 2024?"
 - "When are the equinoxes and solstices this year?"
+- "Where is Mars in the sky tonight?"
+- "What time does Jupiter rise tomorrow?"
+- "Which planets are visible from London right now?"

@@ -23,7 +23,13 @@ async def check_eclipse_visibility(date: str, locations: dict[str, tuple[float, 
     print("=" * 80)
 
     for name, (lat, lon) in locations.items():
-        eclipse = await get_solar_eclipse_by_date(date=date, latitude=lat, longitude=lon)
+        try:
+            eclipse = await get_solar_eclipse_by_date(date=date, latitude=lat, longitude=lon)
+        except Exception as exc:
+            print(f"\n{name} ({lat}°, {lon}°):")
+            print(f"  Error: {exc}")
+            continue
+
         props = eclipse.properties
 
         print(f"\n{name} ({lat}°, {lon}°):")
@@ -38,7 +44,8 @@ async def check_eclipse_visibility(date: str, locations: dict[str, tuple[float, 
             for event in props.local_data:
                 if "Maximum" in event.phenomenon:
                     print(
-                        f"  Maximum at: {event.time} (altitude {event.altitude}°, azimuth {event.azimuth}°)"
+                        f"  Maximum at: {event.time} (altitude {event.altitude}°,"
+                        f" azimuth {event.azimuth}°)"
                     )
                     break
 

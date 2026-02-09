@@ -9,6 +9,8 @@ from typing import Optional
 from ..models import (
     MoonPhasesResponse,
     OneDayResponse,
+    PlanetEventsResponse,
+    PlanetPositionResponse,
     SeasonsResponse,
     SolarEclipseByDateResponse,
     SolarEclipseByYearResponse,
@@ -116,5 +118,55 @@ class CelestialProvider(ABC):
 
         Returns:
             SeasonsResponse with equinoxes, solstices, perihelion, and aphelion
+        """
+        pass
+
+    @abstractmethod
+    async def get_planet_position(
+        self,
+        planet: str,
+        date: str,
+        time: str,
+        latitude: float,
+        longitude: float,
+        timezone: Optional[float] = None,
+    ) -> PlanetPositionResponse:
+        """Get position and observational data for a planet.
+
+        Args:
+            planet: Planet name (Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto)
+            date: Date in YYYY-MM-DD format
+            time: Time in HH:MM format (UTC unless timezone specified)
+            latitude: Observer latitude in decimal degrees (-90 to 90)
+            longitude: Observer longitude in decimal degrees (-180 to 180)
+            timezone: Timezone offset from UTC in hours
+
+        Returns:
+            PlanetPositionResponse with alt/az, RA/Dec, distance, magnitude, visibility
+        """
+        pass
+
+    @abstractmethod
+    async def get_planet_events(
+        self,
+        planet: str,
+        date: str,
+        latitude: float,
+        longitude: float,
+        timezone: Optional[float] = None,
+        dst: Optional[bool] = None,
+    ) -> PlanetEventsResponse:
+        """Get rise, set, and transit times for a planet on a given day.
+
+        Args:
+            planet: Planet name (Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto)
+            date: Date in YYYY-MM-DD format
+            latitude: Observer latitude in decimal degrees (-90 to 90)
+            longitude: Observer longitude in decimal degrees (-180 to 180)
+            timezone: Timezone offset from UTC in hours
+            dst: Whether to apply daylight saving time
+
+        Returns:
+            PlanetEventsResponse with rise/set/transit times
         """
         pass

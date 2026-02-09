@@ -38,7 +38,11 @@ class EclipsePhenomenon(str, Enum):
     """Solar eclipse phenomenon types."""
 
     ECLIPSE_BEGINS = "Eclipse Begins"
+    TOTALITY_BEGINS = "Totality Begins"
+    ANNULARITY_BEGINS = "Annularity Begins"
     MAXIMUM_ECLIPSE = "Maximum Eclipse"
+    TOTALITY_ENDS = "Totality Ends"
+    ANNULARITY_ENDS = "Annularity Ends"
     ECLIPSE_ENDS = "Eclipse Ends"
 
 
@@ -312,4 +316,128 @@ class SeasonsResponse(BaseModel):
         ...,
         description="List of seasonal events for the year. "
         "Typically contains: 2 equinoxes, 2 solstices, 1 perihelion, 1 aphelion",
+    )
+
+
+# ============================================================================
+# Planet Enums
+# ============================================================================
+
+
+class Planet(str, Enum):
+    """Solar system planets supported for position and event queries."""
+
+    MERCURY = "Mercury"
+    VENUS = "Venus"
+    MARS = "Mars"
+    JUPITER = "Jupiter"
+    SATURN = "Saturn"
+    URANUS = "Uranus"
+    NEPTUNE = "Neptune"
+    PLUTO = "Pluto"
+
+
+class VisibilityStatus(str, Enum):
+    """Planet visibility status from an observer's location."""
+
+    VISIBLE = "visible"
+    BELOW_HORIZON = "below_horizon"
+    LOST_IN_SUNLIGHT = "lost_in_sunlight"
+
+
+# ============================================================================
+# Planet Position Models
+# ============================================================================
+
+
+class PlanetPositionData(BaseModel):
+    """Position and observational data for a planet at a specific time and location."""
+
+    planet: Planet = Field(..., description="Planet name")
+    date: str = Field(..., description="Date in YYYY-MM-DD format")
+    time: str = Field(..., description="Time in HH:MM format (UTC or requested timezone)")
+    altitude: float = Field(
+        ..., description="Altitude in degrees above horizon (-90 to 90). Negative = below horizon"
+    )
+    azimuth: float = Field(
+        ..., description="Azimuth in degrees clockwise from north (0=N, 90=E, 180=S, 270=W)"
+    )
+    distance_au: float = Field(..., description="Distance from observer in astronomical units")
+    distance_km: float = Field(..., description="Distance from observer in kilometres")
+    illumination: float = Field(
+        ..., description="Phase illumination percentage (0-100). 100 = fully illuminated"
+    )
+    magnitude: float = Field(..., description="Approximate apparent visual magnitude")
+    constellation: str = Field(
+        ..., description="Constellation the planet currently appears in (IAU abbreviation)"
+    )
+    right_ascension: str = Field(
+        ..., description="Right ascension in HH:MM:SS format (J2000 epoch)"
+    )
+    declination: str = Field(..., description="Declination in DD:MM:SS format (J2000 epoch)")
+    elongation: float = Field(..., description="Angular distance from the sun in degrees (0-180)")
+    visibility: VisibilityStatus = Field(
+        ..., description="Visibility status from the observer's location"
+    )
+
+
+class PlanetPositionProperties(BaseModel):
+    """Properties for PlanetPosition GeoJSON Feature."""
+
+    data: PlanetPositionData = Field(..., description="Planet position data")
+
+
+class PlanetPositionResponse(BaseModel):
+    """Planet position at a specific time and location (GeoJSON Feature)."""
+
+    apiversion: str = Field(..., description="API version string")
+    type: str = Field(default="Feature", description="GeoJSON type (always 'Feature')")
+    geometry: GeoJSONPoint = Field(..., description="Observer location geometry")
+    properties: PlanetPositionProperties = Field(..., description="Planet position data")
+    artifact_ref: Optional[str] = Field(
+        None, description="Artifact reference for stored computation result"
+    )
+
+
+# ============================================================================
+# Planet Events Models
+# ============================================================================
+
+
+class PlanetEventData(BaseModel):
+    """A single planet rise/set/transit event."""
+
+    phen: str = Field(..., description="Phenomenon type: Rise, Set, or Upper Transit")
+    time: str = Field(..., description="Time in HH:MM format. Timezone depends on query parameters")
+
+
+class PlanetEventsData(BaseModel):
+    """Complete planet event data for one day."""
+
+    planet: Planet = Field(..., description="Planet name")
+    date: str = Field(..., description="Date in YYYY-MM-DD format")
+    events: list[PlanetEventData] = Field(
+        ...,
+        description="Rise, set, and transit events. "
+        "May be empty if planet doesn't rise/set on this day (polar regions)",
+    )
+    constellation: str = Field(..., description="Constellation the planet appears in")
+    magnitude: float = Field(..., description="Approximate apparent visual magnitude")
+
+
+class PlanetEventsProperties(BaseModel):
+    """Properties for PlanetEvents GeoJSON Feature."""
+
+    data: PlanetEventsData = Field(..., description="Planet events data")
+
+
+class PlanetEventsResponse(BaseModel):
+    """Planet rise/set/transit times for one day at a location (GeoJSON Feature)."""
+
+    apiversion: str = Field(..., description="API version string")
+    type: str = Field(default="Feature", description="GeoJSON type (always 'Feature')")
+    geometry: GeoJSONPoint = Field(..., description="Observer location geometry")
+    properties: PlanetEventsProperties = Field(..., description="Planet events data")
+    artifact_ref: Optional[str] = Field(
+        None, description="Artifact reference for stored computation result"
     )

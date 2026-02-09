@@ -92,6 +92,8 @@ def get_provider_for_tool(tool_name: str) -> CelestialProvider:
         "solar_eclipse_date": ProviderConfig.SOLAR_ECLIPSE_DATE_PROVIDER,
         "solar_eclipse_year": ProviderConfig.SOLAR_ECLIPSE_YEAR_PROVIDER,
         "earth_seasons": ProviderConfig.EARTH_SEASONS_PROVIDER,
+        "planet_position": ProviderConfig.PLANET_POSITION_PROVIDER,
+        "planet_events": ProviderConfig.PLANET_EVENTS_PROVIDER,
     }
 
     provider_type = tool_config_map.get(tool_name)

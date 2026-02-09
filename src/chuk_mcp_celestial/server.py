@@ -9,20 +9,28 @@ Features:
 - Sun and moon rise/set/transit times
 - Solar eclipse predictions and local circumstances
 - Earth's seasons and orbital events (equinoxes, solstices, perihelion, aphelion)
+- Planet positions (altitude, azimuth, distance, magnitude, constellation)
+- Planet rise/set/transit times
 
 All responses use Pydantic models for type safety and validation.
 No dictionary goop, no magic strings - everything is strongly typed with enums and constants.
 """
 
 import logging
+import os
 import sys
-from typing import Optional
+from pathlib import Path
+from typing import Any, Optional
 
 from chuk_mcp_server import run, tool
 
+from .constants import EnvVar, SessionProvider, StorageProvider
+from .core.celestial_storage import CelestialStorage
 from .models import (
     MoonPhasesResponse,
     OneDayResponse,
+    PlanetEventsResponse,
+    PlanetPositionResponse,
     SeasonsResponse,
     SolarEclipseByDateResponse,
     SolarEclipseByYearResponse,
@@ -36,6 +44,85 @@ logging.basicConfig(
     level=logging.WARNING, format="%(levelname)s:%(name)s:%(message)s", stream=sys.stderr
 )
 logger = logging.getLogger(__name__)
+
+# Module-level storage instance (initialised in main())
+_storage: CelestialStorage = CelestialStorage()
+
+
+# ============================================================================
+# Artifact Store Initialization (following tides pattern)
+# ============================================================================
+
+
+def _init_artifact_store() -> bool:
+    """Initialize the artifact store from environment variables.
+
+    Returns True if artifact store was initialized, False otherwise.
+    """
+    global _storage
+
+    provider = os.environ.get(EnvVar.ARTIFACTS_PROVIDER, StorageProvider.MEMORY)
+    bucket = os.environ.get(EnvVar.BUCKET_NAME)
+    redis_url = os.environ.get(EnvVar.REDIS_URL)
+    artifacts_path = os.environ.get(EnvVar.ARTIFACTS_PATH)
+
+    if provider == StorageProvider.S3:
+        aws_key = os.environ.get(EnvVar.AWS_ACCESS_KEY_ID)
+        aws_secret = os.environ.get(EnvVar.AWS_SECRET_ACCESS_KEY)
+
+        if not all([bucket, aws_key, aws_secret]):
+            logger.warning(
+                "S3 provider configured but missing credentials. "
+                f"Set {EnvVar.AWS_ACCESS_KEY_ID}, {EnvVar.AWS_SECRET_ACCESS_KEY}, "
+                f"and {EnvVar.BUCKET_NAME}."
+            )
+            return False
+
+    elif provider == StorageProvider.FILESYSTEM:
+        if artifacts_path:
+            path_obj = Path(artifacts_path)
+            path_obj.mkdir(parents=True, exist_ok=True)
+        else:
+            logger.warning(
+                f"Filesystem provider configured but {EnvVar.ARTIFACTS_PATH} not set. "
+                "Defaulting to memory provider."
+            )
+            provider = StorageProvider.MEMORY
+
+    try:
+        from chuk_artifacts import ArtifactStore
+        from chuk_mcp_server import set_global_artifact_store
+
+        provider_str = provider.value if isinstance(provider, StorageProvider) else provider
+        session_str = SessionProvider.REDIS.value if redis_url else SessionProvider.MEMORY.value
+
+        store_kwargs: dict[str, Any] = {
+            "storage_provider": provider_str,
+            "session_provider": session_str,
+        }
+
+        if provider_str == StorageProvider.S3.value and bucket:
+            store_kwargs["bucket"] = bucket
+        elif provider_str == StorageProvider.FILESYSTEM.value and artifacts_path:
+            store_kwargs["bucket"] = artifacts_path
+
+        store = ArtifactStore(**store_kwargs)
+        set_global_artifact_store(store)
+
+        # Create storage wrapper with artifact store
+        _storage = CelestialStorage(artifact_store=store)
+
+        logger.info(f"Artifact store initialized successfully (provider: {provider})")
+        return True
+
+    except Exception as e:
+        logger.warning(f"Artifact store not available: {e}")
+        return False
+
+
+# ============================================================================
+# Existing Tools
+# ============================================================================
 
 
 @tool  # type: ignore[arg-type]
@@ -114,22 +201,14 @@ async def get_sun_moon_data(
     Tips for LLMs:
         - Times are in the requested timezone (or UTC if not specified)
         - sundata and moondata may be empty in polar regions during extreme seasons
-        - Civil twilight is when the sun is 6° below horizon - still enough light for outdoor activities
+        - Civil twilight is when the sun is 6 degrees below horizon
         - Use fracillum to determine moon brightness for night photography or stargazing
         - Moon transit time indicates when moon is highest in the sky (best viewing)
-        - For sunrise/sunset times, look for "Rise" and "Set" in sundata
-        - Events are in chronological order
 
     Example:
-        # Get sun/moon data for Seattle on Sept 20, 2005 (PST timezone)
         data = await get_sun_moon_data(
-            date="2005-9-20",
-            latitude=47.60,
-            longitude=-122.33,
-            timezone=-8,
-            dst=True
+            date="2005-9-20", latitude=47.60, longitude=-122.33, timezone=-8, dst=True
         )
-        # Find sunrise
         sunrise = next(e for e in data.properties.data.sundata if e.phen == "Rise")
         print(f"Sunrise at {sunrise.time}")
     """
@@ -150,50 +229,27 @@ async def get_solar_eclipse_by_date(
     and if so, provides detailed timing and positional information for all eclipse phases.
 
     Args:
-        date: Date of the eclipse in YYYY-MM-DD format. No leading zeros required.
-            Valid range: 1800-01-01 to 2050-12-31
+        date: Date of the eclipse in YYYY-MM-DD format. Valid range: 1800-01-01 to 2050-12-31
         latitude: Observer's latitude in decimal degrees (-90 to 90)
         longitude: Observer's longitude in decimal degrees (-180 to 180)
         height: Observer's height above mean sea level in meters. Default is 0.
-            Range: -200 to 10000 meters. Affects timing by seconds due to horizon position.
+            Range: -200 to 10000 meters.
 
     Returns:
-        SolarEclipseByDateResponse: GeoJSON Feature containing:
-            - geometry: Observer location
-            - properties: Eclipse details including:
-                - description: Type of eclipse at this location (Total, Partial, Annular, or No Eclipse)
-                - magnitude: Fraction of sun's diameter covered (1.0+ = total, <1.0 = partial)
-                - obscuration: Percentage of sun's area covered
-                - duration: Total duration of the eclipse
-                - local_data: List of eclipse phases with:
-                    - phenomenon: Eclipse Begins, Maximum Eclipse, Eclipse Ends
-                    - time: Local time of the phase
-                    - altitude/azimuth: Sun's position in the sky
-                    - position_angle/vertex_angle: Eclipse geometry
+        SolarEclipseByDateResponse: GeoJSON Feature with eclipse type, magnitude,
+        obscuration, duration, and local circumstances.
 
     Tips for LLMs:
         - If description is "No Eclipse at this Location", the eclipse isn't visible here
-        - magnitude >= 1.0 indicates a total solar eclipse (moon completely covers sun)
-        - magnitude < 1.0 indicates a partial eclipse
-        - obscuration shows percentage of sun's *area* covered (differs from magnitude)
-        - altitude tells you how high the sun is (negative = below horizon)
-        - azimuth tells you where to look (0=N, 90=E, 180=S, 270=W)
-        - local_data is ordered chronologically (begins, maximum, ends)
-        - Times in local_data are in the observer's local time (not UTC)
-        - Use altitude to determine if eclipse is visible (must be > 0)
+        - magnitude >= 1.0 indicates total eclipse; < 1.0 is partial
+        - altitude must be > 0 for eclipse to be visible (sun above horizon)
+        - Use get_solar_eclipses_by_year first to find eclipse dates
 
     Example:
-        # Check eclipse visibility from Portland, OR on Aug 21, 2017
         eclipse = await get_solar_eclipse_by_date(
-            date="2017-8-21",
-            latitude=46.67,
-            longitude=-122.65,
-            height=15
+            date="2017-8-21", latitude=46.67, longitude=-122.65, height=15
         )
         print(f"Eclipse type: {eclipse.properties.description}")
-        print(f"Maximum coverage: {eclipse.properties.obscuration}")
-        for event in eclipse.properties.local_data:
-            print(f"{event.phenomenon} at {event.time}, sun at {event.altitude}° altitude")
     """
     provider = get_provider_for_tool("solar_eclipse_date")
     return await provider.get_solar_eclipse_by_date(date, latitude, longitude, height)
@@ -213,22 +269,13 @@ async def get_solar_eclipses_by_year(
         year: Year to query (1800-2050)
 
     Returns:
-        SolarEclipseByYearResponse: Contains:
-            - year: The queried year
-            - eclipses_in_year: List of eclipse events with:
-                - year, month, day: Date of the eclipse
-                - event: Full description (e.g., "Total Solar Eclipse of 2024 Apr. 08")
+        SolarEclipseByYearResponse with list of eclipse events.
 
     Tips for LLMs:
-        - Most years have 2 solar eclipses, some have 3, rarely 4, never more
-        - Event description tells you the type (Total, Annular, Partial, Hybrid)
+        - Most years have 2 solar eclipses, some have 3, rarely 4
         - After finding an eclipse date, use get_solar_eclipse_by_date to check visibility
-          from a specific location
-        - Not all eclipses are visible from all locations on Earth
-        - Total solar eclipses are rare from any given location (average 375 years between them)
 
     Example:
-        # Find all solar eclipses in 2024
         eclipses = await get_solar_eclipses_by_year(2024)
         for eclipse in eclipses.eclipses_in_year:
             print(f"{eclipse.event} on {eclipse.year}-{eclipse.month}-{eclipse.day}")
@@ -250,50 +297,185 @@ async def get_earth_seasons(
 
     Args:
         year: Year to query (1700-2100)
-        timezone: Timezone offset from UTC in hours (e.g., -8 for PST, 1 for CET).
-            Positive = East of UTC, Negative = West of UTC. If not provided, UTC (0) is used.
-        dst: Whether to apply daylight saving time adjustment. If not provided, defaults to false.
+        timezone: Timezone offset from UTC in hours. If not provided, UTC (0) is used.
+        dst: Whether to apply daylight saving time adjustment.
 
     Returns:
-        SeasonsResponse: Contains:
-            - year: The queried year
-            - tz: Timezone offset used
-            - dst: Whether DST was applied
-            - data: List of seasonal events (typically 6 per year):
-                - Perihelion: Earth's closest approach to sun (~Jan 3, ~147M km)
-                - March Equinox: Vernal/spring equinox in Northern Hemisphere (~Mar 20)
-                - June Solstice: Summer solstice in Northern Hemisphere (~Jun 21, longest day)
-                - Aphelion: Earth's farthest point from sun (~Jul 4, ~152M km)
-                - September Equinox: Autumnal/fall equinox in Northern Hemisphere (~Sep 22)
-                - December Solstice: Winter solstice in Northern Hemisphere (~Dec 21, shortest day)
+        SeasonsResponse with equinoxes, solstices, perihelion, and aphelion.
 
     Tips for LLMs:
-        - Times are in the specified timezone (or UTC if not specified)
-        - Equinoxes: day and night are approximately equal length worldwide
-        - Solstices: mark the longest and shortest days of the year in each hemisphere
-        - Perihelion/Aphelion: Earth's orbit is elliptical, not circular
-        - Despite being closest to sun in January, Northern Hemisphere has winter due to tilt
-        - The tilt of Earth's axis (23.5°) causes seasons, not distance from sun
-        - Exact times are precise to the minute for astronomical purposes
-        - Seasons are opposite in Northern and Southern hemispheres:
-            - June solstice: summer in north, winter in south
-            - December solstice: winter in north, summer in south
+        - Typically 6 events per year (2 equinoxes, 2 solstices, perihelion, aphelion)
+        - Seasons are opposite in Northern and Southern hemispheres
+        - Earth's 23.5 degree axial tilt causes seasons, not distance from sun
 
     Example:
-        # Get seasonal events for 2024 in UTC
         seasons = await get_earth_seasons(2024)
         for event in seasons.data:
             print(f"{event.phenom}: {event.month}/{event.day}/{event.year} at {event.time}")
-
-        # Get seasonal events for 2024 in US Central Time with DST
-        seasons = await get_earth_seasons(2024, timezone=-6, dst=True)
     """
     provider = get_provider_for_tool("earth_seasons")
     return await provider.get_earth_seasons(year, timezone, dst)
 
 
+# ============================================================================
+# Planet Tools (v0.3.0)
+# ============================================================================
+
+
+@tool  # type: ignore[arg-type]
+async def get_planet_position(
+    planet: str,
+    date: str,
+    time: str,
+    latitude: float,
+    longitude: float,
+    timezone: Optional[float] = None,
+) -> PlanetPositionResponse:
+    """Get position and observational data for a planet at a specific time and location.
+
+    Returns altitude, azimuth, distance, phase illumination, apparent magnitude,
+    constellation, equatorial coordinates (RA/Dec), elongation from the sun,
+    and visibility status. Essential for planning astronomical observations
+    and answering "where is [planet] tonight?" questions.
+
+    Args:
+        planet: Planet name. One of: Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto
+        date: Date in YYYY-MM-DD format (e.g., "2025-6-15")
+        time: Time in HH:MM format, 24-hour (e.g., "22:30"). Interpreted as UTC unless
+            timezone is specified.
+        latitude: Observer's latitude in decimal degrees (-90 to 90)
+        longitude: Observer's longitude in decimal degrees (-180 to 180)
+        timezone: Timezone offset from UTC in hours (e.g., -8 for PST, 1 for CET).
+            When provided, the time parameter is interpreted as local time.
+
+    Returns:
+        PlanetPositionResponse: GeoJSON Feature containing:
+            - geometry: Observer location
+            - properties.data: Planet position data:
+                - altitude: Degrees above horizon (negative = below horizon)
+                - azimuth: Degrees clockwise from north (0=N, 90=E, 180=S, 270=W)
+                - distance_au / distance_km: Distance from observer
+                - illumination: Phase illumination percentage (0-100)
+                - magnitude: Apparent visual magnitude (lower = brighter)
+                - constellation: IAU constellation abbreviation
+                - right_ascension / declination: Equatorial coordinates (J2000)
+                - elongation: Angular distance from sun in degrees
+                - visibility: "visible", "below_horizon", or "lost_in_sunlight"
+            - artifact_ref: Reference to stored computation (if artifact store configured)
+
+    Tips for LLMs:
+        - Lower magnitude = brighter. Venus can reach -4.4, Jupiter -2.7
+        - Elongation < 10-15 degrees means planet is too close to the sun to see
+        - altitude > 0 means the planet is above the horizon
+        - azimuth tells you where to look: 0=North, 90=East, 180=South, 270=West
+        - For "where is Mars tonight?", use time="21:00" with appropriate timezone
+        - Mercury is hardest to see (small elongation), Venus and Jupiter are easiest
+
+    Example:
+        pos = await get_planet_position(
+            planet="Mars", date="2025-6-15", time="22:00",
+            latitude=47.6, longitude=-122.3, timezone=-7
+        )
+        data = pos.properties.data
+        if data.visibility == "visible":
+            print(f"Mars is at {data.altitude}° altitude, {data.azimuth}° azimuth")
+            print(f"Magnitude: {data.magnitude}, in {data.constellation}")
+    """
+    provider = get_provider_for_tool("planet_position")
+    result = await provider.get_planet_position(planet, date, time, latitude, longitude, timezone)
+
+    # Store computation result
+    artifact_ref = await _storage.save_position(
+        planet=planet,
+        date=date,
+        time=time,
+        lat=latitude,
+        lon=longitude,
+        data=result.properties.data.model_dump(),
+    )
+    if artifact_ref:
+        result.artifact_ref = artifact_ref
+
+    return result
+
+
+@tool  # type: ignore[arg-type]
+async def get_planet_events(
+    planet: str,
+    date: str,
+    latitude: float,
+    longitude: float,
+    timezone: Optional[float] = None,
+    dst: Optional[bool] = None,
+) -> PlanetEventsResponse:
+    """Get rise, set, and transit times for a planet on a given day at a location.
+
+    Returns the times a planet rises above the horizon, transits the meridian
+    (highest point), and sets below the horizon. Essential for planning when
+    to observe a planet.
+
+    Args:
+        planet: Planet name. One of: Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto
+        date: Date in YYYY-MM-DD format (e.g., "2025-6-15")
+        latitude: Observer's latitude in decimal degrees (-90 to 90)
+        longitude: Observer's longitude in decimal degrees (-180 to 180)
+        timezone: Timezone offset from UTC in hours (e.g., -8 for PST).
+            When provided, event times are in local time.
+        dst: Whether to apply daylight saving time adjustment.
+
+    Returns:
+        PlanetEventsResponse: GeoJSON Feature containing:
+            - geometry: Observer location
+            - properties.data:
+                - planet: Planet name
+                - date: Query date
+                - events: List of rise/set/transit events with times
+                - constellation: Current constellation
+                - magnitude: Apparent visual magnitude
+            - artifact_ref: Reference to stored computation (if artifact store configured)
+
+    Tips for LLMs:
+        - Events may be empty if the planet doesn't rise/set that day (polar regions)
+        - Transit time is when the planet is highest — best viewing time
+        - Use with get_planet_position to get full details at a specific time
+        - Outer planets (Jupiter, Saturn) are above the horizon for ~12 hours
+        - Inner planets (Mercury, Venus) are only visible near sunrise or sunset
+
+    Example:
+        events = await get_planet_events(
+            planet="Jupiter", date="2025-6-15",
+            latitude=51.5, longitude=-0.1, timezone=1
+        )
+        for event in events.properties.data.events:
+            print(f"Jupiter {event.phen} at {event.time}")
+    """
+    provider = get_provider_for_tool("planet_events")
+    result = await provider.get_planet_events(planet, date, latitude, longitude, timezone, dst)
+
+    # Store computation result
+    artifact_ref = await _storage.save_events(
+        planet=planet,
+        date=date,
+        lat=latitude,
+        lon=longitude,
+        data=result.properties.data.model_dump(),
+    )
+    if artifact_ref:
+        result.artifact_ref = artifact_ref
+
+    return result
+
+
+# ============================================================================
+# CLI Entry Point
+# ============================================================================
+
+
 def main() -> None:
     """Run the US Navy Celestial MCP server."""
+    # Initialize artifact store at startup
+    _init_artifact_store()
+
     # Check if transport is specified in command line args
     # Default to stdio for MCP compatibility (Claude Desktop, mcp-cli)
     transport = "stdio"

@@ -126,3 +126,37 @@ class TestSkyfieldConfig:
         assert config_module.SkyfieldConfig.EPHEMERIS_FILE == "de440.bsp"
         assert config_module.SkyfieldConfig.STORAGE_BACKEND == "local"
         assert config_module.SkyfieldConfig.S3_BUCKET == "test-bucket"
+
+
+class TestPlanetProviderConfig:
+    """Test planet-specific provider configuration."""
+
+    def test_planet_position_provider_default(self):
+        """Test planet position provider defaults to skyfield."""
+        assert ProviderConfig.PLANET_POSITION_PROVIDER == "skyfield"
+
+    def test_planet_events_provider_default(self):
+        """Test planet events provider defaults to skyfield."""
+        assert ProviderConfig.PLANET_EVENTS_PROVIDER == "skyfield"
+
+    def test_planet_position_env_override(self, monkeypatch):
+        """Test planet position provider environment variable override."""
+        monkeypatch.setenv("CELESTIAL_PLANET_POSITION_PROVIDER", "navy_api")
+
+        from importlib import reload
+        from chuk_mcp_celestial import config as config_module
+
+        reload(config_module)
+
+        assert config_module.ProviderConfig.PLANET_POSITION_PROVIDER == "navy_api"
+
+    def test_planet_events_env_override(self, monkeypatch):
+        """Test planet events provider environment variable override."""
+        monkeypatch.setenv("CELESTIAL_PLANET_EVENTS_PROVIDER", "navy_api")
+
+        from importlib import reload
+        from chuk_mcp_celestial import config as config_module
+
+        reload(config_module)
+
+        assert config_module.ProviderConfig.PLANET_EVENTS_PROVIDER == "navy_api"

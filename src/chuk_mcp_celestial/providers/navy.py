@@ -13,6 +13,8 @@ from ..config import NavyAPIConfig
 from ..models import (
     MoonPhasesResponse,
     OneDayResponse,
+    PlanetEventsResponse,
+    PlanetPositionResponse,
     SeasonsResponse,
     SolarEclipseByDateResponse,
     SolarEclipseByYearResponse,
@@ -277,3 +279,39 @@ class NavyAPIProvider(CelestialProvider):
             data = response.json()
 
         return SeasonsResponse(**data)
+
+    async def get_planet_position(
+        self,
+        planet: str,
+        date: str,
+        time: str,
+        latitude: float,
+        longitude: float,
+        timezone: Optional[float] = None,
+    ) -> PlanetPositionResponse:
+        """Get planet position data.
+
+        Not supported by Navy API provider. Use Skyfield provider.
+        """
+        raise NotImplementedError(
+            "Planet position calculations are not supported by the Navy API provider. "
+            "Use Skyfield provider for this functionality: set CELESTIAL_PLANET_POSITION_PROVIDER=skyfield"
+        )
+
+    async def get_planet_events(
+        self,
+        planet: str,
+        date: str,
+        latitude: float,
+        longitude: float,
+        timezone: Optional[float] = None,
+        dst: Optional[bool] = None,
+    ) -> PlanetEventsResponse:
+        """Get planet rise/set/transit times.
+
+        Not supported by Navy API provider. Use Skyfield provider.
+        """
+        raise NotImplementedError(
+            "Planet event calculations are not supported by the Navy API provider. "
+            "Use Skyfield provider for this functionality: set CELESTIAL_PLANET_EVENTS_PROVIDER=skyfield"
+        )

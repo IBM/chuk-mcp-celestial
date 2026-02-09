@@ -1,12 +1,16 @@
 [project]
 name = "chuk-mcp-celestial"
 version = "0.2.1"
-description = "MCP server for US Navy astronomical and celestial data - moon phases, eclipses, sun/moon rise/set times"
+description = "MCP server for astronomical and celestial data - moon phases, eclipses, sun/moon rise/set, planetary positions and events"
+authors = [
+    {name = "Chris Hay", email = "chris@example.com"}
+]
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.11"
 dependencies = [
     "chuk-mcp-server>=0.8",
+    "chuk-artifacts>=0.5",
     "httpx>=0.27.0",
     "pydantic>=2.0.0",
     "chuk-virtual-fs>=0.3.1",
@@ -25,6 +29,7 @@ dev = [
 ]
 skyfield = [
     "skyfield>=1.48",
+    "numpy>=1.24.0",
     "pyyaml>=6.0",
     "boto3>=1.28.0",
     "aioboto3>=12.0.0",

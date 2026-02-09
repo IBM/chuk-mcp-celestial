@@ -1,7 +1,11 @@
 """Tests for US Navy Celestial MCP Server."""
 
+import os
+
 import pytest
+
 from chuk_mcp_celestial.server import (
+    _init_artifact_store,
     get_earth_seasons,
     get_moon_phases,
     get_solar_eclipse_by_date,
@@ -340,6 +344,8 @@ def test_imports():
     assert hasattr(server, "get_solar_eclipse_by_date")
     assert hasattr(server, "get_solar_eclipses_by_year")
     assert hasattr(server, "get_earth_seasons")
+    assert hasattr(server, "get_planet_position")
+    assert hasattr(server, "get_planet_events")
 
     # Check models
     assert hasattr(models, "MoonPhasesResponse")
@@ -347,12 +353,16 @@ def test_imports():
     assert hasattr(models, "SolarEclipseByDateResponse")
     assert hasattr(models, "SolarEclipseByYearResponse")
     assert hasattr(models, "SeasonsResponse")
+    assert hasattr(models, "PlanetPositionResponse")
+    assert hasattr(models, "PlanetEventsResponse")
 
     # Check enums
     assert hasattr(models, "MoonPhase")
     assert hasattr(models, "CelestialPhenomenon")
     assert hasattr(models, "EclipsePhenomenon")
     assert hasattr(models, "SeasonPhenomenon")
+    assert hasattr(models, "Planet")
+    assert hasattr(models, "VisibilityStatus")
 
 
 # ============================================================================
@@ -419,8 +429,9 @@ def test_main_stdio_mode():
     # Mock sys.argv to not have http argument
     with patch.object(sys, "argv", ["server.py"]):
         with patch("chuk_mcp_celestial.server.run") as mock_run:
-            main()
-            mock_run.assert_called_once_with(transport="stdio")
+            with patch("chuk_mcp_celestial.server._init_artifact_store", return_value=False):
+                main()
+                mock_run.assert_called_once_with(transport="stdio")
 
 
 def test_main_http_mode():
@@ -432,8 +443,9 @@ def test_main_http_mode():
     # Test with 'http' argument
     with patch.object(sys, "argv", ["server.py", "http"]):
         with patch("chuk_mcp_celestial.server.run") as mock_run:
-            main()
-            mock_run.assert_called_once_with(transport="http")
+            with patch("chuk_mcp_celestial.server._init_artifact_store", return_value=False):
+                main()
+                mock_run.assert_called_once_with(transport="http")
 
 
 def test_main_http_flag():
@@ -445,8 +457,39 @@ def test_main_http_flag():
     # Test with '--http' argument
     with patch.object(sys, "argv", ["server.py", "--http"]):
         with patch("chuk_mcp_celestial.server.run") as mock_run:
-            main()
-            mock_run.assert_called_once_with(transport="http")
+            with patch("chuk_mcp_celestial.server._init_artifact_store", return_value=False):
+                main()
+                mock_run.assert_called_once_with(transport="http")
+
+
+def test_navy_planet_position_not_implemented():
+    """Test that Navy API provider raises NotImplementedError for planet position."""
+    from chuk_mcp_celestial.providers.navy import NavyAPIProvider
+
+    provider = NavyAPIProvider()
+
+    async def _call():
+        await provider.get_planet_position("Mars", "2025-01-15", "22:00", 47.6, -122.3)
+
+    import asyncio
+
+    with pytest.raises(NotImplementedError, match="Navy API provider"):
+        asyncio.get_event_loop().run_until_complete(_call())
+
+
+def test_navy_planet_events_not_implemented():
+    """Test that Navy API provider raises NotImplementedError for planet events."""
+    from chuk_mcp_celestial.providers.navy import NavyAPIProvider
+
+    provider = NavyAPIProvider()
+
+    async def _call():
+        await provider.get_planet_events("Mars", "2025-01-15", 47.6, -122.3)
+
+    import asyncio
+
+    with pytest.raises(NotImplementedError, match="Navy API provider"):
+        asyncio.get_event_loop().run_until_complete(_call())
 
 
 def test_main_logging_configuration():
@@ -459,7 +502,298 @@ def test_main_logging_configuration():
     # Test stdio mode suppresses logging
     with patch.object(sys, "argv", ["server.py"]):
         with patch("chuk_mcp_celestial.server.run"):
-            main()
-            # Check that loggers are set to ERROR level
-            assert logging.getLogger("chuk_mcp_server").level == logging.ERROR
-            assert logging.getLogger("httpx").level == logging.ERROR
+            with patch("chuk_mcp_celestial.server._init_artifact_store", return_value=False):
+                main()
+                # Check that loggers are set to ERROR level
+                assert logging.getLogger("chuk_mcp_server").level == logging.ERROR
+                assert logging.getLogger("httpx").level == logging.ERROR
+
+
+# ============================================================================
+# _init_artifact_store Tests
+# ============================================================================
+
+
+class TestInitArtifactStore:
+    """Test the _init_artifact_store function for coverage of lines 64-120."""
+
+    def test_memory_provider_success(self):
+        """Test memory provider initializes successfully."""
+        from unittest.mock import patch, MagicMock
+
+        mock_store = MagicMock()
+
+        with patch.dict(
+            os.environ,
+            {"CHUK_ARTIFACTS_PROVIDER": "memory"},
+            clear=False,
+        ):
+            with patch(
+                "chuk_artifacts.ArtifactStore",
+                return_value=mock_store,
+            ) as mock_cls:
+                with patch("chuk_mcp_server.set_global_artifact_store"):
+                    result = _init_artifact_store()
+                    assert result is True
+                    mock_cls.assert_called_once()
+
+    def test_s3_provider_missing_credentials(self):
+        """Test S3 provider with missing credentials returns False."""
+        from unittest.mock import patch
+
+        env = {
+            "CHUK_ARTIFACTS_PROVIDER": "s3",
+        }
+        # Remove any existing credential keys
+        with patch.dict(os.environ, env, clear=False):
+            for key in [
+                "AWS_ACCESS_KEY_ID",
+                "AWS_SECRET_ACCESS_KEY",
+                "CHUK_ARTIFACTS_BUCKET",
+            ]:
+                os.environ.pop(key, None)
+            result = _init_artifact_store()
+            assert result is False
+
+    def test_s3_provider_with_credentials(self):
+        """Test S3 provider with all credentials present."""
+        from unittest.mock import patch, MagicMock
+
+        mock_store = MagicMock()
+        env = {
+            "CHUK_ARTIFACTS_PROVIDER": "s3",
+            "AWS_ACCESS_KEY_ID": "test-key",
+            "AWS_SECRET_ACCESS_KEY": "test-secret",
+            "CHUK_ARTIFACTS_BUCKET": "test-bucket",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            with patch(
+                "chuk_artifacts.ArtifactStore",
+                return_value=mock_store,
+            ):
+                with patch("chuk_mcp_server.set_global_artifact_store"):
+                    result = _init_artifact_store()
+                    assert result is True
+
+    def test_filesystem_provider_with_path(self, tmp_path):
+        """Test filesystem provider with path set."""
+        from unittest.mock import patch, MagicMock
+
+        mock_store = MagicMock()
+        env = {
+            "CHUK_ARTIFACTS_PROVIDER": "filesystem",
+            "CHUK_ARTIFACTS_PATH": str(tmp_path / "artifacts"),
+        }
+        with patch.dict(os.environ, env, clear=False):
+            with patch(
+                "chuk_artifacts.ArtifactStore",
+                return_value=mock_store,
+            ):
+                with patch("chuk_mcp_server.set_global_artifact_store"):
+                    result = _init_artifact_store()
+                    assert result is True
+
+    def test_filesystem_provider_without_path(self):
+        """Test filesystem provider without path defaults to memory."""
+        from unittest.mock import patch, MagicMock
+
+        mock_store = MagicMock()
+        env = {
+            "CHUK_ARTIFACTS_PROVIDER": "filesystem",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            os.environ.pop("CHUK_ARTIFACTS_PATH", None)
+            with patch(
+                "chuk_artifacts.ArtifactStore",
+                return_value=mock_store,
+            ):
+                with patch("chuk_mcp_server.set_global_artifact_store"):
+                    result = _init_artifact_store()
+                    assert result is True
+
+    def test_import_failure(self):
+        """Test graceful failure when chuk_artifacts not importable."""
+        from unittest.mock import patch
+
+        env = {"CHUK_ARTIFACTS_PROVIDER": "memory"}
+        with patch.dict(os.environ, env, clear=False):
+            with patch(
+                "chuk_artifacts.ArtifactStore",
+                side_effect=ImportError("not installed"),
+            ):
+                result = _init_artifact_store()
+                assert result is False
+
+    def test_store_init_exception(self):
+        """Test graceful failure when ArtifactStore raises."""
+        from unittest.mock import patch
+
+        env = {"CHUK_ARTIFACTS_PROVIDER": "memory"}
+        with patch.dict(os.environ, env, clear=False):
+            with patch(
+                "chuk_artifacts.ArtifactStore",
+                side_effect=RuntimeError("init failed"),
+            ):
+                result = _init_artifact_store()
+                assert result is False
+
+    def test_redis_session_provider(self):
+        """Test that redis URL triggers redis session provider."""
+        from unittest.mock import patch, MagicMock, call
+
+        mock_store = MagicMock()
+        env = {
+            "CHUK_ARTIFACTS_PROVIDER": "memory",
+            "CHUK_REDIS_URL": "redis://localhost:6379",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            with patch(
+                "chuk_artifacts.ArtifactStore",
+                return_value=mock_store,
+            ) as mock_cls:
+                with patch("chuk_mcp_server.set_global_artifact_store"):
+                    result = _init_artifact_store()
+                    assert result is True
+                    # Check that session_provider was set to redis
+                    kwargs = mock_cls.call_args[1]
+                    assert kwargs["session_provider"] == "redis"
+
+
+# ============================================================================
+# Planet Tool Function Tests (lines 384-399, 452-466)
+# ============================================================================
+
+
+class TestPlanetToolFunctions:
+    """Test server-level planet tool functions for coverage."""
+
+    @pytest.mark.asyncio
+    async def test_get_planet_position_with_storage(self):
+        """Test get_planet_position stores result and sets artifact_ref."""
+        from unittest.mock import patch, AsyncMock, MagicMock
+
+        # Create mock provider
+        mock_position_data = MagicMock()
+        mock_position_data.model_dump.return_value = {"planet": "Mars", "altitude": 30.0}
+
+        mock_result = MagicMock()
+        mock_result.properties.data = mock_position_data
+        mock_result.artifact_ref = None
+
+        mock_provider = AsyncMock()
+        mock_provider.get_planet_position.return_value = mock_result
+
+        # Create mock storage that returns an artifact ID
+        mock_storage = AsyncMock()
+        mock_storage.save_position.return_value = "artifact-123"
+
+        from chuk_mcp_celestial.server import get_planet_position
+
+        with patch("chuk_mcp_celestial.server.get_provider_for_tool", return_value=mock_provider):
+            with patch("chuk_mcp_celestial.server._storage", mock_storage):
+                result = await get_planet_position(
+                    planet="Mars",
+                    date="2025-1-15",
+                    time="22:00",
+                    latitude=47.6,
+                    longitude=-122.3,
+                )
+
+        assert result.artifact_ref == "artifact-123"
+        mock_storage.save_position.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_planet_position_no_artifact(self):
+        """Test get_planet_position when storage returns None."""
+        from unittest.mock import patch, AsyncMock, MagicMock
+
+        mock_position_data = MagicMock()
+        mock_position_data.model_dump.return_value = {"planet": "Mars"}
+
+        mock_result = MagicMock()
+        mock_result.properties.data = mock_position_data
+        mock_result.artifact_ref = None
+
+        mock_provider = AsyncMock()
+        mock_provider.get_planet_position.return_value = mock_result
+
+        mock_storage = AsyncMock()
+        mock_storage.save_position.return_value = None
+
+        from chuk_mcp_celestial.server import get_planet_position
+
+        with patch("chuk_mcp_celestial.server.get_provider_for_tool", return_value=mock_provider):
+            with patch("chuk_mcp_celestial.server._storage", mock_storage):
+                result = await get_planet_position(
+                    planet="Mars",
+                    date="2025-1-15",
+                    time="22:00",
+                    latitude=47.6,
+                    longitude=-122.3,
+                )
+
+        # artifact_ref should not be overwritten when None
+        assert result.artifact_ref is None
+
+    @pytest.mark.asyncio
+    async def test_get_planet_events_with_storage(self):
+        """Test get_planet_events stores result and sets artifact_ref."""
+        from unittest.mock import patch, AsyncMock, MagicMock
+
+        mock_events_data = MagicMock()
+        mock_events_data.model_dump.return_value = {"planet": "Jupiter", "events": []}
+
+        mock_result = MagicMock()
+        mock_result.properties.data = mock_events_data
+        mock_result.artifact_ref = None
+
+        mock_provider = AsyncMock()
+        mock_provider.get_planet_events.return_value = mock_result
+
+        mock_storage = AsyncMock()
+        mock_storage.save_events.return_value = "artifact-456"
+
+        from chuk_mcp_celestial.server import get_planet_events
+
+        with patch("chuk_mcp_celestial.server.get_provider_for_tool", return_value=mock_provider):
+            with patch("chuk_mcp_celestial.server._storage", mock_storage):
+                result = await get_planet_events(
+                    planet="Jupiter",
+                    date="2025-6-15",
+                    latitude=47.6,
+                    longitude=-122.3,
+                )
+
+        assert result.artifact_ref == "artifact-456"
+        mock_storage.save_events.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_planet_events_no_artifact(self):
+        """Test get_planet_events when storage returns None."""
+        from unittest.mock import patch, AsyncMock, MagicMock
+
+        mock_events_data = MagicMock()
+        mock_events_data.model_dump.return_value = {"planet": "Jupiter"}
+
+        mock_result = MagicMock()
+        mock_result.properties.data = mock_events_data
+        mock_result.artifact_ref = None
+
+        mock_provider = AsyncMock()
+        mock_provider.get_planet_events.return_value = mock_result
+
+        mock_storage = AsyncMock()
+        mock_storage.save_events.return_value = None
+
+        from chuk_mcp_celestial.server import get_planet_events
+
+        with patch("chuk_mcp_celestial.server.get_provider_for_tool", return_value=mock_provider):
+            with patch("chuk_mcp_celestial.server._storage", mock_storage):
+                result = await get_planet_events(
+                    planet="Jupiter",
+                    date="2025-6-15",
+                    latitude=47.6,
+                    longitude=-122.3,
+                )
+
+        assert result.artifact_ref is None

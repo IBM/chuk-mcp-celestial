@@ -18,22 +18,39 @@ from typing import Optional
 from chuk_virtual_fs import AsyncVirtualFileSystem
 
 from ..config import SkyfieldConfig
+from ..constants import (
+    PLANET_ABSOLUTE_MAGNITUDE,
+    PLANET_MIN_ELONGATION,
+    PLANET_SKYFIELD_NAMES,
+)
 from ..models import (
+    GeoJSONPoint,
     MoonPhase,
     MoonPhaseData,
     MoonPhasesResponse,
     OneDayResponse,
+    Planet,
+    PlanetEventData,
+    PlanetEventsData,
+    PlanetEventsProperties,
+    PlanetEventsResponse,
+    PlanetPositionData,
+    PlanetPositionProperties,
+    PlanetPositionResponse,
     SeasonsResponse,
     SolarEclipseByDateResponse,
     SolarEclipseByYearResponse,
+    VisibilityStatus,
 )
 from .base import CelestialProvider
 
 logger = logging.getLogger(__name__)
 
 try:
+    import numpy as np
     from skyfield import almanac
-    from skyfield.iokit import Loader
+    from skyfield.api import Loader, wgs84
+    from skyfield.magnitudelib import planetary_magnitude
 
     SKYFIELD_AVAILABLE = True
 except ImportError:
@@ -412,4 +429,358 @@ class SkyfieldProvider(CelestialProvider):
             tz=timezone if timezone is not None else 0.0,
             dst=dst if dst is not None else False,
             data=season_events,
+        )
+
+    # ====================================================================
+    # Planet helpers
+    # ====================================================================
+
+    def _resolve_planet(self, planet_name: str):
+        """Resolve a planet name to a Skyfield ephemeris object.
+
+        Args:
+            planet_name: Planet name (e.g., "Mars")
+
+        Returns:
+            Skyfield ephemeris body
+
+        Raises:
+            ValueError: If planet name is not recognised
+        """
+        skyfield_name = PLANET_SKYFIELD_NAMES.get(planet_name)
+        if skyfield_name is None:
+            valid = ", ".join(PLANET_SKYFIELD_NAMES.keys())
+            raise ValueError(f"Unknown planet: {planet_name}. Valid planets: {valid}")
+        return self.eph[skyfield_name]
+
+    def _compute_visibility(
+        self, altitude: float, elongation: float, planet_name: str
+    ) -> VisibilityStatus:
+        """Determine planet visibility from altitude and elongation."""
+        if altitude < 0:
+            return VisibilityStatus.BELOW_HORIZON
+        min_elong = PLANET_MIN_ELONGATION.get(planet_name, 10.0)
+        if elongation < min_elong:
+            return VisibilityStatus.LOST_IN_SUNLIGHT
+        return VisibilityStatus.VISIBLE
+
+    def _estimate_magnitude(
+        self, planet_name: str, distance_au: float, sun_distance_au: float, phase_angle_deg: float
+    ) -> float:
+        """Estimate apparent visual magnitude for a planet.
+
+        Uses Skyfield's planetary_magnitude when available, falls back to
+        a simple distance-based estimate.
+        """
+        try:
+            # planetary_magnitude expects specific planet identifiers
+            # We need the astrometric position — caller should use the
+            # dedicated Skyfield function instead.  This is the fallback.
+            pass
+        except Exception:
+            pass
+
+        # Simple fallback: H + 5*log10(r * delta)
+        H = PLANET_ABSOLUTE_MAGNITUDE.get(planet_name, 0.0)
+        if distance_au > 0 and sun_distance_au > 0:
+            import math
+
+            mag = H + 5.0 * math.log10(distance_au * sun_distance_au)
+            return round(mag, 1)
+        return H
+
+    # ====================================================================
+    # Planet Position
+    # ====================================================================
+
+    async def get_planet_position(
+        self,
+        planet: str,
+        date: str,
+        time: str,
+        latitude: float,
+        longitude: float,
+        timezone: Optional[float] = None,
+    ) -> PlanetPositionResponse:
+        """Get position and observational data for a planet.
+
+        Uses Skyfield to compute topocentric position (alt/az), equatorial
+        coordinates (RA/Dec), distance, elongation, and visibility.
+        """
+        await self._ensure_ephemeris_cached()
+
+        # Validate planet
+        try:
+            planet_enum = Planet(planet)
+        except ValueError:
+            valid = ", ".join(p.value for p in Planet)
+            raise ValueError(f"Unknown planet: {planet}. Valid: {valid}")
+
+        planet_body = self._resolve_planet(planet)
+
+        # Parse date and time
+        year, month, day = map(int, date.split("-"))
+        hour, minute = map(int, time.split(":"))
+
+        # Apply timezone: convert local time to UTC for computation
+        utc_hour = hour
+        utc_minute = minute
+        if timezone is not None:
+            from datetime import datetime as dt, timedelta as td
+
+            local = dt(year, month, day, hour, minute)
+            utc = local - td(hours=timezone)
+            year, month, day = utc.year, utc.month, utc.day
+            utc_hour, utc_minute = utc.hour, utc.minute
+
+        t = self.ts.utc(year, month, day, utc_hour, utc_minute)
+
+        # Build observer location
+        earth = self.eph["earth"]
+        observer = earth + wgs84.latlon(latitude, longitude)
+
+        # Observe planet
+        astrometric = observer.at(t).observe(planet_body)
+        apparent = astrometric.apparent()
+
+        # Alt/Az
+        alt, az, dist = apparent.altaz()
+        altitude_deg = round(alt.degrees, 2)
+        azimuth_deg = round(az.degrees, 2)
+
+        # Distance
+        distance_au = round(dist.au, 6)
+        distance_km = round(dist.km, 0)
+
+        # RA/Dec (J2000)
+        ra, dec, _ = apparent.radec()
+        ra_hours = ra.hours
+        ra_h = int(ra_hours)
+        ra_m = int((ra_hours - ra_h) * 60)
+        ra_s = round(((ra_hours - ra_h) * 60 - ra_m) * 60, 1)
+        ra_str = f"{ra_h:02d}:{ra_m:02d}:{ra_s:04.1f}"
+
+        dec_deg = dec.degrees
+        dec_sign = "+" if dec_deg >= 0 else "-"
+        dec_abs = abs(dec_deg)
+        dec_d = int(dec_abs)
+        dec_m = int((dec_abs - dec_d) * 60)
+        dec_s = round(((dec_abs - dec_d) * 60 - dec_m) * 60, 1)
+        dec_str = f"{dec_sign}{dec_d:02d}:{dec_m:02d}:{dec_s:04.1f}"
+
+        # Constellation
+        try:
+            from skyfield.api import load_constellation_map
+
+            constellation_at = load_constellation_map()
+            position = apparent
+            constellation = constellation_at(position)
+        except Exception:
+            constellation = "N/A"
+
+        # Elongation (angular separation from sun)
+        sun = self.eph["sun"]
+        sun_apparent = observer.at(t).observe(sun).apparent()
+        elongation_angle = sun_apparent.separation_from(apparent)
+        elongation_deg = round(elongation_angle.degrees, 1)
+
+        # Sun distance from planet (for magnitude calculation)
+        sun_astrometric = self.eph["sun"].at(t)
+        planet_helio = self.eph[PLANET_SKYFIELD_NAMES[planet]].at(t)
+
+        # Illumination (phase angle based)
+        # Phase angle: angle Sun-Planet-Observer
+        import math
+
+        phase_angle_deg = 180.0 - elongation_deg  # rough approximation
+        # Better: use the actual geometry
+        try:
+            # dot product of planet->observer and planet->sun vectors
+            obs_vec = -np.array(astrometric.position.au)  # observer from planet
+            sun_from_planet = np.array(sun_astrometric.position.au) - np.array(
+                planet_helio.position.au
+            )
+            cos_phase = np.dot(obs_vec, sun_from_planet) / (
+                np.linalg.norm(obs_vec) * np.linalg.norm(sun_from_planet)
+            )
+            cos_phase = np.clip(cos_phase, -1.0, 1.0)
+            phase_angle_deg = math.degrees(math.acos(cos_phase))
+        except Exception:
+            pass
+
+        illumination = round((1 + math.cos(math.radians(phase_angle_deg))) / 2 * 100, 1)
+
+        # Magnitude
+        try:
+            mag = round(float(planetary_magnitude(astrometric)), 1)
+        except Exception:
+            sun_dist = np.linalg.norm(
+                np.array(planet_helio.position.au) - np.array(sun_astrometric.position.au)
+            )
+            mag = self._estimate_magnitude(planet, distance_au, sun_dist, phase_angle_deg)
+
+        # Visibility
+        visibility = self._compute_visibility(altitude_deg, elongation_deg, planet)
+
+        # Build response
+        position_data = PlanetPositionData(
+            planet=planet_enum,
+            date=date,
+            time=time,
+            altitude=altitude_deg,
+            azimuth=azimuth_deg,
+            distance_au=distance_au,
+            distance_km=distance_km,
+            illumination=illumination,
+            magnitude=mag,
+            constellation=constellation,
+            right_ascension=ra_str,
+            declination=dec_str,
+            elongation=elongation_deg,
+            visibility=visibility,
+        )
+
+        return PlanetPositionResponse(
+            apiversion="Skyfield 1.x",
+            type="Feature",
+            geometry=GeoJSONPoint(
+                type="Point",
+                coordinates=[longitude, latitude],
+            ),
+            properties=PlanetPositionProperties(data=position_data),
+            artifact_ref=None,
+        )
+
+    # ====================================================================
+    # Planet Events (Rise / Set / Transit)
+    # ====================================================================
+
+    async def get_planet_events(
+        self,
+        planet: str,
+        date: str,
+        latitude: float,
+        longitude: float,
+        timezone: Optional[float] = None,
+        dst: Optional[bool] = None,
+    ) -> PlanetEventsResponse:
+        """Get rise, set, and transit times for a planet on a given day.
+
+        Uses Skyfield almanac functions to find rise/set/transit events.
+        """
+        await self._ensure_ephemeris_cached()
+
+        # Validate planet
+        try:
+            planet_enum = Planet(planet)
+        except ValueError:
+            valid = ", ".join(p.value for p in Planet)
+            raise ValueError(f"Unknown planet: {planet}. Valid: {valid}")
+
+        planet_body = self._resolve_planet(planet)
+
+        # Parse date
+        year, month, day = map(int, date.split("-"))
+
+        # Time range: full day in UTC
+        t0 = self.ts.utc(year, month, day)
+        t1 = self.ts.utc(year, month, day + 1)
+
+        # Build observer
+        earth = self.eph["earth"]
+        location = wgs84.latlon(latitude, longitude)
+        observer = earth + location
+
+        # Find risings and settings
+        events: list[PlanetEventData] = []
+
+        # Risings
+        try:
+            t_rise, rise_flags = almanac.find_risings(observer, planet_body, t0, t1)
+            for t_event in t_rise:
+                utc_dt = t_event.utc_datetime()
+                if timezone is not None:
+                    offset = timezone + (1 if dst else 0)
+                    utc_dt = utc_dt + timedelta(hours=offset)
+                events.append(
+                    PlanetEventData(
+                        phen="Rise",
+                        time=f"{utc_dt.hour:02d}:{utc_dt.minute:02d}",
+                    )
+                )
+        except Exception as e:
+            logger.debug(f"No risings found for {planet}: {e}")
+
+        # Settings
+        try:
+            t_set, set_flags = almanac.find_settings(observer, planet_body, t0, t1)
+            for t_event in t_set:
+                utc_dt = t_event.utc_datetime()
+                if timezone is not None:
+                    offset = timezone + (1 if dst else 0)
+                    utc_dt = utc_dt + timedelta(hours=offset)
+                events.append(
+                    PlanetEventData(
+                        phen="Set",
+                        time=f"{utc_dt.hour:02d}:{utc_dt.minute:02d}",
+                    )
+                )
+        except Exception as e:
+            logger.debug(f"No settings found for {planet}: {e}")
+
+        # Transit (meridian crossing — highest point)
+        try:
+            t_transit, transit_flags = almanac.find_transits(observer, planet_body, t0, t1)
+            for t_event in t_transit:
+                utc_dt = t_event.utc_datetime()
+                if timezone is not None:
+                    offset = timezone + (1 if dst else 0)
+                    utc_dt = utc_dt + timedelta(hours=offset)
+                events.append(
+                    PlanetEventData(
+                        phen="Upper Transit",
+                        time=f"{utc_dt.hour:02d}:{utc_dt.minute:02d}",
+                    )
+                )
+        except Exception as e:
+            logger.debug(f"No transits found for {planet}: {e}")
+
+        # Sort events by time
+        events.sort(key=lambda e: e.time)
+
+        # Get constellation and magnitude at noon
+        t_noon = self.ts.utc(year, month, day, 12)
+        astrometric = observer.at(t_noon).observe(planet_body)
+        apparent = astrometric.apparent()
+
+        try:
+            from skyfield.api import load_constellation_map
+
+            constellation_at = load_constellation_map()
+            constellation = constellation_at(apparent)
+        except Exception:
+            constellation = "N/A"
+
+        try:
+            mag = round(float(planetary_magnitude(astrometric)), 1)
+        except Exception:
+            mag = PLANET_ABSOLUTE_MAGNITUDE.get(planet, 0.0)
+
+        events_data = PlanetEventsData(
+            planet=planet_enum,
+            date=date,
+            events=events,
+            constellation=constellation,
+            magnitude=mag,
+        )
+
+        return PlanetEventsResponse(
+            apiversion="Skyfield 1.x",
+            type="Feature",
+            geometry=GeoJSONPoint(
+                type="Point",
+                coordinates=[longitude, latitude],
+            ),
+            properties=PlanetEventsProperties(data=events_data),
+            artifact_ref=None,
         )
