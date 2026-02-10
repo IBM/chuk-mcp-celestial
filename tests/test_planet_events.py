@@ -14,7 +14,6 @@ except ImportError:
 
 from chuk_mcp_celestial.models import Planet
 
-
 pytestmark = pytest.mark.skipif(not SKYFIELD_AVAILABLE, reason="Skyfield not installed")
 
 

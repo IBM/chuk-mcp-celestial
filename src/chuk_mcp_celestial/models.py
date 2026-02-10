@@ -9,7 +9,6 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-
 # ============================================================================
 # Enums - No Magic Strings
 # ============================================================================
@@ -452,30 +451,20 @@ class SkyPlanetSummary(BaseModel):
     """Summary of a single planet's position for sky overview."""
 
     planet: Planet = Field(..., description="Planet name")
-    altitude: float = Field(
-        ..., description="Altitude in degrees above horizon (-90 to 90)"
-    )
-    azimuth: float = Field(
-        ..., description="Azimuth in degrees clockwise from north (0-360)"
-    )
+    altitude: float = Field(..., description="Altitude in degrees above horizon (-90 to 90)")
+    azimuth: float = Field(..., description="Azimuth in degrees clockwise from north (0-360)")
     magnitude: float = Field(..., description="Apparent visual magnitude")
     constellation: str = Field(..., description="IAU constellation abbreviation")
-    elongation: float = Field(
-        ..., description="Angular distance from the sun in degrees"
-    )
+    elongation: float = Field(..., description="Angular distance from the sun in degrees")
     visibility: VisibilityStatus = Field(..., description="Visibility status")
-    direction: str = Field(
-        ..., description="Compass direction: N, NE, E, SE, S, SW, W, NW"
-    )
+    direction: str = Field(..., description="Compass direction: N, NE, E, SE, S, SW, W, NW")
 
 
 class SkyMoonSummary(BaseModel):
     """Moon summary for sky overview."""
 
     phase: str = Field(..., description="Current moon phase (e.g., 'Waxing Crescent')")
-    illumination: str = Field(
-        ..., description="Illumination percentage (e.g., '45%')"
-    )
+    illumination: str = Field(..., description="Illumination percentage (e.g., '45%')")
     next_phase: Optional[str] = Field(
         None, description="Next phase description (e.g., 'Full Moon on 2026-02-17')"
     )
@@ -489,13 +478,10 @@ class SkyData(BaseModel):
 
     date: str = Field(..., description="Date in YYYY-MM-DD format")
     time: str = Field(..., description="Time in HH:MM format")
-    is_dark: bool = Field(
-        ..., description="True if sun is below -6 degrees (civil twilight)"
-    )
+    is_dark: bool = Field(..., description="True if sun is below -6 degrees (civil twilight)")
     visible_planets: list[SkyPlanetSummary] = Field(
         ...,
-        description="Planets above horizon and not lost in sunlight, "
-        "sorted brightest first",
+        description="Planets above horizon and not lost in sunlight, sorted brightest first",
     )
     all_planets: list[SkyPlanetSummary] = Field(
         ..., description="All 8 planets regardless of visibility"
@@ -520,6 +506,4 @@ class SkyResponse(BaseModel):
     type: str = Field(default="Feature", description="GeoJSON type (always 'Feature')")
     geometry: GeoJSONPoint = Field(..., description="Observer location geometry")
     properties: SkyProperties = Field(..., description="Sky summary data")
-    artifact_ref: Optional[str] = Field(
-        None, description="Artifact reference for stored result"
-    )
+    artifact_ref: Optional[str] = Field(None, description="Artifact reference for stored result")

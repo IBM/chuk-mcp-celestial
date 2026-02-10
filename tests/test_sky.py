@@ -15,7 +15,6 @@ except ImportError:
 from chuk_mcp_celestial.models import Planet, VisibilityStatus
 from chuk_mcp_celestial.server import _azimuth_to_direction, get_sky
 
-
 pytestmark = pytest.mark.skipif(not SKYFIELD_AVAILABLE, reason="Skyfield not installed")
 
 
@@ -171,7 +170,7 @@ async def test_get_sky_planet_fields(greenwich_coords):
 
 @pytest.mark.asyncio
 async def test_get_sky_moon(greenwich_coords):
-    """Test that moon data is populated."""
+    """Test that moon data is populated with real phase and illumination."""
     result = await get_sky(
         date="2025-6-15",
         time="22:00",
@@ -181,7 +180,21 @@ async def test_get_sky_moon(greenwich_coords):
 
     moon = result.properties.data.moon
     assert isinstance(moon.phase, str)
+    assert moon.phase != "Unknown"
+    valid_phases = [
+        "New Moon",
+        "Waxing Crescent",
+        "First Quarter",
+        "Waxing Gibbous",
+        "Full Moon",
+        "Waning Gibbous",
+        "Last Quarter",
+        "Waning Crescent",
+    ]
+    assert moon.phase in valid_phases
     assert isinstance(moon.illumination, str)
+    assert moon.illumination != "Unknown"
+    assert "%" in moon.illumination
 
 
 @pytest.mark.asyncio

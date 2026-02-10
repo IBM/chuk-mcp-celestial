@@ -4,7 +4,6 @@ import pytest
 
 from chuk_mcp_celestial.core.celestial_storage import CelestialStorage
 
-
 # ============================================================================
 # Storage without artifact store (graceful degradation)
 # ============================================================================

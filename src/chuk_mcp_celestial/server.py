@@ -585,63 +585,101 @@ async def get_sky(
         key=lambda p: p.magnitude,
     )
 
-    # Get moon phase
-    try:
-        moon_provider = get_provider_for_tool("moon_phases")
-        moon_result = await moon_provider.get_moon_phases(date, 4)
-        first_phase = moon_result.phasedata[0] if moon_result.phasedata else None
-        moon = SkyMoonSummary(
-            phase="Unknown",
-            illumination="Unknown",
-            next_phase=(
-                f"{first_phase.phase.value} on {first_phase.year}-{first_phase.month:02d}-{first_phase.day:02d}"
-                if first_phase
-                else None
-            ),
-            next_phase_date=(
-                f"{first_phase.year}-{first_phase.month:02d}-{first_phase.day:02d}"
-                if first_phase
-                else None
-            ),
-        )
-    except Exception as exc:
-        logger.warning("Failed to get moon phases: %s", exc)
-        moon = SkyMoonSummary(phase="Unknown", illumination="Unknown")
-
-    # Determine if sky is dark (sun below -6 degrees = civil twilight)
-    # We can check this by computing the sun's altitude using the skyfield provider
+    # Compute moon phase/illumination and sun altitude via Skyfield
+    moon = SkyMoonSummary(
+        phase="Unknown", illumination="Unknown", next_phase=None, next_phase_date=None
+    )
     is_dark = True
     try:
-        eph = planet_provider.eph  # type: ignore[attr-defined]
-        ts = planet_provider.ts  # type: ignore[attr-defined]
+        import math
+
         from skyfield.api import wgs84
 
-        year, month, day = map(int, date.split("-"))
-        hour, minute = map(int, time.split(":"))
-        utc_hour, utc_minute = hour, minute
+        eph = planet_provider.eph  # type: ignore[attr-defined]
+        ts = planet_provider.ts  # type: ignore[attr-defined]
+
+        year_i, month_i, day_i = map(int, date.split("-"))
+        hour_i, minute_i = map(int, time.split(":"))
+        utc_hour, utc_minute = hour_i, minute_i
         if timezone is not None:
             from datetime import datetime as dt
             from datetime import timedelta as td
 
-            local = dt(year, month, day, hour, minute)
+            local = dt(year_i, month_i, day_i, hour_i, minute_i)
             utc = local - td(hours=timezone)
-            year, month, day = utc.year, utc.month, utc.day
+            year_i, month_i, day_i = utc.year, utc.month, utc.day
             utc_hour, utc_minute = utc.hour, utc.minute
-        t = ts.utc(year, month, day, utc_hour, utc_minute)
+        t = ts.utc(year_i, month_i, day_i, utc_hour, utc_minute)
         earth = eph["earth"]
         observer = earth + wgs84.latlon(latitude, longitude)
-        sun = eph["sun"]
-        sun_apparent = observer.at(t).observe(sun).apparent()
+
+        # Sun altitude → is_dark
+        sun_body = eph["sun"]
+        sun_apparent = observer.at(t).observe(sun_body).apparent()
         sun_alt, _, _ = sun_apparent.altaz()
         is_dark = sun_alt.degrees < -6.0
+
+        # Moon illumination from geometry
+        moon_body = eph["moon"]
+        moon_astrometric = observer.at(t).observe(moon_body)
+        moon_apparent = moon_astrometric.apparent()
+        sun_astrometric = observer.at(t).observe(sun_body)
+        sun_app = sun_astrometric.apparent()
+        moon_sun_angle = sun_app.separation_from(moon_apparent)
+        # Elongation-based illumination approximation
+        illum_frac = (1 - math.cos(math.radians(moon_sun_angle.degrees))) / 2
+        illum_pct = round(illum_frac * 100)
+
+        # Determine current phase name from illumination + whether waxing or waning
+        # Use Skyfield almanac to find the previous phase
+        from skyfield import almanac
+
+        phase_angle = almanac.moon_phase(eph, t).degrees  # 0-360
+        if illum_pct <= 2:
+            cur_phase = "New Moon"
+        elif illum_pct >= 98:
+            cur_phase = "Full Moon"
+        elif 0 < phase_angle < 90:
+            cur_phase = "Waxing Crescent"
+        elif 80 < phase_angle < 100:
+            cur_phase = "First Quarter"
+        elif 90 < phase_angle < 180:
+            cur_phase = "Waxing Gibbous"
+        elif 180 < phase_angle < 270:
+            cur_phase = "Waning Gibbous"
+        elif 260 < phase_angle < 280:
+            cur_phase = "Last Quarter"
+        else:
+            cur_phase = "Waning Crescent"
+
+        # Get next upcoming phase
+        next_phase_str = None
+        next_phase_date_str = None
+        try:
+            moon_provider = get_provider_for_tool("moon_phases")
+            moon_result = await moon_provider.get_moon_phases(date, 4)
+            first_phase = moon_result.phasedata[0] if moon_result.phasedata else None
+            if first_phase:
+                next_phase_str = f"{first_phase.phase.value} on {first_phase.year}-{first_phase.month:02d}-{first_phase.day:02d}"
+                next_phase_date_str = (
+                    f"{first_phase.year}-{first_phase.month:02d}-{first_phase.day:02d}"
+                )
+        except Exception:
+            pass
+
+        moon = SkyMoonSummary(
+            phase=cur_phase,
+            illumination=f"{illum_pct}%",
+            next_phase=next_phase_str,
+            next_phase_date=next_phase_date_str,
+        )
     except Exception as exc:
-        logger.warning("Failed to compute sun altitude: %s", exc)
+        logger.warning("Failed to compute moon/sun data: %s", exc)
 
     # Build summary string
     if visible_planets:
         planet_parts = [
-            f"{p.planet.value} ({p.direction}, mag {p.magnitude})"
-            for p in visible_planets
+            f"{p.planet.value} ({p.direction}, mag {p.magnitude})" for p in visible_planets
         ]
         summary = f"{len(visible_planets)} planet(s) visible: {', '.join(planet_parts)}."
     else:
@@ -665,6 +703,7 @@ async def get_sky(
         type="Feature",
         geometry=GeoJSONPoint(type="Point", coordinates=[longitude, latitude]),
         properties=SkyProperties(data=sky_data),
+        artifact_ref=None,
     )
 
     # Store result
