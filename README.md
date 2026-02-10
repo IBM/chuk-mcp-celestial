@@ -24,7 +24,7 @@ from the US Navy Astronomical Applications Department API and local Skyfield cal
 
 ⚡ **Flexible Providers:**
 - **Navy API** - Authoritative US Navy data, all features
-- **Skyfield** - 28x faster, offline calculations, research-grade accuracy
+- **Skyfield** - 28x faster, offline calculations, research-grade accuracy (included by default)
 - **Hybrid mode** - Mix providers per-tool (e.g., Skyfield for moon phases, Navy for eclipses)
 - **S3 storage** - Cloud-based ephemeris storage via chuk-virtual-fs
 - **Artifact storage** - Computation results persisted via chuk-artifacts (S3, filesystem, memory)
@@ -89,7 +89,6 @@ Run directly without installing:
 
 ### Option 3: Install Locally
 
-**Basic Installation (Navy API only):**
 ```bash
 # With pip
 pip install chuk-mcp-celestial
@@ -101,16 +100,11 @@ uv pip install chuk-mcp-celestial
 pipx install chuk-mcp-celestial
 ```
 
-**With Skyfield Support (offline calculations, 28x faster):**
+Skyfield and NumPy are included by default — all 7 tools work out of the box.
+
+**With S3 artifact storage (optional):**
 ```bash
-# Install with Skyfield and S3 support
-pip install "chuk-mcp-celestial[skyfield]"
-
-# Or with uv
-uv pip install "chuk-mcp-celestial[skyfield]"
-
-# Download ephemeris files (one-time setup)
-python scripts/download_ephemeris.py --backend local
+pip install "chuk-mcp-celestial[s3]"
 ```
 
 Then configure in your MCP client:
@@ -145,7 +139,7 @@ uvx chuk-mcp-celestial
 # Or install from PyPI
 uv pip install chuk-mcp-celestial
 
-# Or install from source
+# Or install from source with dev tools
 git clone https://github.com/chuk-ai/chuk-mcp-celestial.git
 cd chuk-mcp-celestial
 uv pip install -e ".[dev]"
@@ -193,11 +187,7 @@ chuk-mcp-celestial http --port 8080
 | **Navy API** (default) | ~700ms | No | Moon, sun/moon, eclipses, seasons. Official US government source. |
 | **Skyfield** | ~25ms | Yes | Moon phases, seasons, planet position, planet events. JPL ephemeris. |
 
-Install Skyfield support:
-
-```bash
-uv pip install "chuk-mcp-celestial[skyfield]"
-```
+Both providers are included by default — no extras needed.
 
 ## Tools
 
@@ -268,7 +258,7 @@ providers:
 ## Development
 
 ```bash
-# Install dev dependencies
+# Install with dev dependencies
 uv pip install -e ".[dev]"
 
 # Run tests

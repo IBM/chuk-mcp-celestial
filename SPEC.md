@@ -1,6 +1,6 @@
 # chuk-mcp-celestial Specification
 
-Version 0.3.0
+Version 0.3.1
 
 ## Overview
 
@@ -367,7 +367,7 @@ All tools raise exceptions on failure with descriptive messages:
 | Invalid date format | `ValueError: Invalid date format` |
 | Date out of range | API returns error; Pydantic validation fails |
 | Provider unavailable | `httpx.HTTPStatusError` or `ConnectionError` |
-| Skyfield not installed | `ValueError: Provider 'skyfield' requires additional dependencies` |
+| Skyfield not installed | `RuntimeError` with install instructions |
 | Unsupported tool on Skyfield | `NotImplementedError` with feature description |
 | Invalid coordinates | `ValueError` from parameter validation |
 

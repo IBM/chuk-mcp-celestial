@@ -381,7 +381,13 @@ async def get_planet_position(
             print(f"Mars is at {data.altitude}° altitude, {data.azimuth}° azimuth")
             print(f"Magnitude: {data.magnitude}, in {data.constellation}")
     """
-    provider = get_provider_for_tool("planet_position")
+    try:
+        provider = get_provider_for_tool("planet_position")
+    except ValueError:
+        raise RuntimeError(
+            "Planet position requires the skyfield extra. "
+            "Install with: pip install chuk-mcp-celestial[skyfield]"
+        )
     result = await provider.get_planet_position(planet, date, time, latitude, longitude, timezone)
 
     # Store computation result
@@ -449,7 +455,13 @@ async def get_planet_events(
         for event in events.properties.data.events:
             print(f"Jupiter {event.phen} at {event.time}")
     """
-    provider = get_provider_for_tool("planet_events")
+    try:
+        provider = get_provider_for_tool("planet_events")
+    except ValueError:
+        raise RuntimeError(
+            "Planet events requires the skyfield extra. "
+            "Install with: pip install chuk-mcp-celestial[skyfield]"
+        )
     result = await provider.get_planet_events(planet, date, latitude, longitude, timezone, dst)
 
     # Store computation result

@@ -50,6 +50,15 @@ for computation persistence.
 - [x] Tests for planetary tools, storage, factory mappings, config, base class
 - [x] Updated SPEC, ARCHITECTURE, README, ROADMAP documentation
 
+## v0.3.1 — Skyfield as Core Dependency (Complete)
+
+Skyfield moved from optional to core dependency so all 7 tools work out of the box.
+
+- [x] Moved `skyfield` and `numpy` from `[project.optional-dependencies]` to `dependencies`
+- [x] Renamed optional `[skyfield]` extra to `[s3]` (boto3, aioboto3, python-dotenv for S3 storage)
+- [x] Graceful error messages in planet tools when skyfield is somehow unavailable
+- [x] Updated README, SPEC, ARCHITECTURE, ROADMAP documentation
+
 ## v0.4.0 — Tonight's Sky & Conjunctions
 
 High-level LLM-friendly tools — what an LLM naturally wants to call instead
