@@ -333,7 +333,7 @@ wheels = [
 
 [[package]]
 name = "chuk-artifacts"
-version = "0.11.1"
+version = "0.11.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioboto3" },
@@ -345,9 +345,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "redis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/93/22/639f641df8a872153b239d8d06c703d73f53e8c380255ccd23a582d6085d/chuk_artifacts-0.11.1.tar.gz", hash = "sha256:8fbc1cd30c59b4e43861f858f1970f8d35d8c05407ccc5a61b212b04908a0912", size = 154734, upload-time = "2026-02-18T14:39:45.971Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f4/b1/2ee70daba54ae6b4adde131be3fae194abbf7e0922282f2050e53eac1766/chuk_artifacts-0.11.3.tar.gz", hash = "sha256:3f79f8870f43205498ffe8ed9abe60ddf85afd24a4f89a88b0f36364ca69f646", size = 156386, upload-time = "2026-04-23T14:27:53.87Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a7/3b/5884d320e1b65c8176cee17d69c241ff531785ed5cb76c8cb7896839d42e/chuk_artifacts-0.11.1-py3-none-any.whl", hash = "sha256:368f92d71e45917755db68b45af7763ebaf68b92dfc67cc3868a408aff40c0b3", size = 78416, upload-time = "2026-02-18T14:39:44.512Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/72/7c763572bc31d9f78a323bbe2f461de545319cf6de324f7e7fb75ce9cff0/chuk_artifacts-0.11.3-py3-none-any.whl", hash = "sha256:f5a2ea7704b8764e67e060a74788d9b813fd7d3aaac298c6cefd58c3d1670dae", size = 80072, upload-time = "2026-04-23T14:27:52.369Z" },
 ]
 
 [[package]]
@@ -416,9 +416,9 @@ requires-dist = [
     { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.7.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=24.0.0" },
     { name = "boto3", marker = "extra == 's3'", specifier = ">=1.28.0" },
-    { name = "chuk-artifacts", specifier = ">=0.6.1" },
+    { name = "chuk-artifacts", specifier = ">=0.11.3" },
     { name = "chuk-mcp-celestial", extras = ["dev", "s3"], marker = "extra == 'all'" },
-    { name = "chuk-mcp-server", specifier = ">=0.17" },
+    { name = "chuk-mcp-server", specifier = ">=0.25.4" },
     { name = "chuk-virtual-fs", specifier = ">=0.3.1" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8.0" },
@@ -437,7 +437,7 @@ provides-extras = ["dev", "s3", "all"]
 
 [[package]]
 name = "chuk-mcp-server"
-version = "0.17"
+version = "0.25.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chuk-mcp" },
@@ -446,16 +446,15 @@ dependencies = [
     { name = "httptools" },
     { name = "httpx" },
     { name = "orjson" },
-    { name = "psutil" },
     { name = "python-multipart" },
     { name = "pyyaml" },
     { name = "starlette" },
     { name = "uvicorn" },
     { name = "uvloop", marker = "sys_platform != 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5d/cc/6580c132e9c76083097ddac4841f002120f95cdad38ff14e8cc0ba467965/chuk_mcp_server-0.17.tar.gz", hash = "sha256:bff7d6ee00517bcba0bf655969e909a90e670b6b7d24c3c1146152e4e3fc6f5d", size = 576197, upload-time = "2026-02-18T15:28:49.289Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/71/57cf25f87141fae61725410b215bf806b71cfd5af8756bb11e8cda38e7ee/chuk_mcp_server-0.25.4.tar.gz", hash = "sha256:f5dcc2ae6ccbf272c426b9546399fbf3e26562cd2345e8b0aa0b3fd19439f255", size = 736026, upload-time = "2026-04-23T17:23:21.132Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f5/bf/601f8bd60b13d88bdfee6489571ccd7c022ae907a1355b3679494052fef6/chuk_mcp_server-0.17-py3-none-any.whl", hash = "sha256:bbaff02b59485d76cf1304a06a349dee3e0cbd0cf9e6c377a261751e1fd514ea", size = 156270, upload-time = "2026-02-18T15:28:47.997Z" },
+    { url = "https://files.pythonhosted.org/packages/67/b4/b19c4629afb22543b8f7ead3759fc50bcf97c211c4e1e72329e7cc5a504c/chuk_mcp_server-0.25.4-py3-none-any.whl", hash = "sha256:df0ad5be600a78d91cc4c2676d733f3a30c276546194abe1419f78b31e17b1c4", size = 198660, upload-time = "2026-04-23T17:23:19.255Z" },
 ]
 
 [[package]]
@@ -474,18 +473,17 @@ wheels = [
 
 [[package]]
 name = "chuk-tool-processor"
-version = "0.20.1"
+version = "0.22.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chuk-mcp" },
-    { name = "dotenv" },
     { name = "psutil" },
     { name = "pydantic" },
-    { name = "uuid" },
+    { name = "python-dotenv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bf/5b/892c74f6a13fa0f4d2b9fd1ec4941281466b5704f20a04480243f41b8bbc/chuk_tool_processor-0.20.1.tar.gz", hash = "sha256:8ab07c40337ddfa2f95bf160377cc6c858620fec4fac3064ab398abcda3002c9", size = 275722, upload-time = "2026-02-17T23:58:49.06Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/26/937126e6fa74faa2b57e96d9e9299e438ffe66ce89c202d0b8d996891207/chuk_tool_processor-0.22.2.tar.gz", hash = "sha256:7a3498f12adf2f071f93771b841131557e22725986b014b40ed4353a7fba3193", size = 279655, upload-time = "2026-04-23T18:11:57.199Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b5/38/3789f949bffcdb1125f30e2b6915b723729594154f8a6e674536f5db9162/chuk_tool_processor-0.20.1-py3-none-any.whl", hash = "sha256:45c4549051642884373852a72b8bb1f50dffd97663ca375446cebd363def2abe", size = 328190, upload-time = "2026-02-17T23:58:47.408Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/4d/2dde1472a268e3e7bcb69313d489a6a221b4f27d87c142935d927e4abe3a/chuk_tool_processor-0.22.2-py3-none-any.whl", hash = "sha256:fe4ed11e8d2270bb630d0bbfc81d32f54bab48ce4e383ae87a748f7e0e6c71e8", size = 328640, upload-time = "2026-04-23T18:11:55.693Z" },
 ]
 
 [[package]]
@@ -1935,6 +1933,7 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/62/45/0e35398ef8d4b07ecfa9f7f680e183b2b6af9215a56af34f9e621c29b495/sgp4-2.25-cp313-cp313-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5789b7add136362684dfcbf0862919f8c3018f74ab11a05a9964edd5fdd4d2a7", size = 235584, upload-time = "2025-08-04T18:02:07.152Z" },
     { url = "https://files.pythonhosted.org/packages/47/b7/1b680b5514586b3860500109ef37fd1761f21e6787f20a2597baa44d91a0/sgp4-2.25-cp313-cp313-win32.whl", hash = "sha256:94219b486def29aa1246f42de8bea05ccb8e98a5458dd08ce42b9811c79ca814", size = 161896, upload-time = "2025-08-04T18:02:08.062Z" },
     { url = "https://files.pythonhosted.org/packages/67/c1/a22be2e7886db40d1512969f3b8cc3ce989167e69ea8f308f26afd1dfd31/sgp4-2.25-cp313-cp313-win_amd64.whl", hash = "sha256:dec2f6c842d9bf40c67d5764bd752980844f91f338020d2af7f85847364d0ff7", size = 164142, upload-time = "2025-08-04T18:02:09Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/47/8231e3d4a88341316ec8d0eb98d3a8a972477d8b038555259522735a8371/sgp4-2.25-py3-none-any.whl", hash = "sha256:4f39ecf6c2663109fed04adfe9982815ac83893271b521d92d5b186820f8c78e", size = 137376, upload-time = "2026-04-27T18:29:23.71Z" },
 ]
 
 [[package]]
@@ -2075,12 +2074,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/c7/24/5f1b3bdffd70275f6
 wheels = [
     { url = "https://files.pythonhosted.org/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4", size = 131584, upload-time = "2026-01-07T16:24:42.685Z" },
 ]
-
-[[package]]
-name = "uuid"
-version = "1.30"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ce/63/f42f5aa951ebf2c8dac81f77a8edcc1c218640a2a35a03b9ff2d4aa64c3d/uuid-1.30.tar.gz", hash = "sha256:1f87cc004ac5120466f36c5beae48b4c48cc411968eed0eaecd3da82aa96193f", size = 5811, upload-time = "2007-05-26T11:13:24Z" }
 
 [[package]]
 name = "uvicorn"
