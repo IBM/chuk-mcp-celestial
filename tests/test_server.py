@@ -473,7 +473,7 @@ def test_navy_planet_position_not_implemented():
     import asyncio
 
     with pytest.raises(NotImplementedError, match="Navy API provider"):
-        asyncio.get_event_loop().run_until_complete(_call())
+        asyncio.run(_call())
 
 
 def test_navy_planet_events_not_implemented():
@@ -488,7 +488,7 @@ def test_navy_planet_events_not_implemented():
     import asyncio
 
     with pytest.raises(NotImplementedError, match="Navy API provider"):
-        asyncio.get_event_loop().run_until_complete(_call())
+        asyncio.run(_call())
 
 
 def test_main_logging_configuration():
