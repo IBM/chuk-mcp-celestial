@@ -68,6 +68,7 @@ class TestAzimuthToDirection:
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_get_sky_basic(greenwich_coords):
     """Test basic get_sky call returns expected structure."""
     result = await get_sky(
@@ -95,6 +96,7 @@ async def test_get_sky_basic(greenwich_coords):
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_get_sky_all_planets(greenwich_coords):
     """Test that all 8 planets are returned in all_planets."""
     result = await get_sky(
@@ -113,6 +115,7 @@ async def test_get_sky_all_planets(greenwich_coords):
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_get_sky_visible_subset(greenwich_coords):
     """Test that visible_planets is a valid subset of all_planets."""
     result = await get_sky(
@@ -135,6 +138,7 @@ async def test_get_sky_visible_subset(greenwich_coords):
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_get_sky_visible_sorted_brightest(greenwich_coords):
     """Test that visible_planets are sorted brightest first (lowest magnitude)."""
     result = await get_sky(
@@ -149,6 +153,7 @@ async def test_get_sky_visible_sorted_brightest(greenwich_coords):
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_get_sky_planet_fields(greenwich_coords):
     """Test that planet summaries have valid field values."""
     result = await get_sky(
@@ -169,6 +174,7 @@ async def test_get_sky_planet_fields(greenwich_coords):
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_get_sky_moon(greenwich_coords):
     """Test that moon data is populated with real phase and illumination."""
     result = await get_sky(
@@ -198,6 +204,7 @@ async def test_get_sky_moon(greenwich_coords):
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_get_sky_with_timezone(seattle_coords):
     """Test get_sky with timezone offset."""
     result = await get_sky(
@@ -214,6 +221,7 @@ async def test_get_sky_with_timezone(seattle_coords):
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_get_sky_daytime(greenwich_coords):
     """Test get_sky during daytime — is_dark should be False."""
     result = await get_sky(
@@ -227,6 +235,7 @@ async def test_get_sky_daytime(greenwich_coords):
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_get_sky_nighttime(greenwich_coords):
     """Test get_sky at night — is_dark should be True."""
     # December midnight in Greenwich — definitely dark
@@ -241,6 +250,7 @@ async def test_get_sky_nighttime(greenwich_coords):
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_get_sky_summary_contains_planet_count(greenwich_coords):
     """Test that summary string mentions visible planet count."""
     result = await get_sky(
