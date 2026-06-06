@@ -23,7 +23,7 @@ class TestSkyfieldVFS:
 
         # Create provider with memory backend
         provider = SkyfieldProvider(
-            ephemeris_file="de421.bsp", storage_backend="memory", auto_download=True
+            ephemeris_file="de421.bsp", storage_backend="memory", auto_download=False
         )
 
         # Should be able to initialize VFS
@@ -38,7 +38,7 @@ class TestSkyfieldVFS:
 
         # Create provider with local backend
         provider = SkyfieldProvider(
-            ephemeris_file="de421.bsp", storage_backend="local", auto_download=True
+            ephemeris_file="de421.bsp", storage_backend="local", auto_download=False
         )
 
         # Should be able to initialize VFS

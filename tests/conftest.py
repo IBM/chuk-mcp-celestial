@@ -1,9 +1,15 @@
 """Pytest configuration and fixtures for chuk-mcp-celestial tests."""
 
 import asyncio
+import socket
 from typing import Any, Callable
 
 import pytest
+
+# Bound any stray network operation (e.g. a Skyfield ephemeris/IERS fetch) so a
+# slow/blocked runner connection fails fast instead of hanging the suite. The
+# per-test pytest-timeout is the backstop; this stops socket-level stalls first.
+socket.setdefaulttimeout(30)
 
 
 # Coordinate fixtures for common test locations

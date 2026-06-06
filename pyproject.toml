@@ -20,6 +20,7 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.3.0",
     "black>=24.0.0",
     "ruff>=0.3.0",
     "mypy>=1.8.0",
@@ -57,6 +58,10 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
+# Cap any single test so a stuck network/ephemeris call fails fast instead of
+# hanging CI for an hour (thread method works on Windows too).
+timeout = 120
+timeout_method = "thread"
 markers = [
     "asyncio: mark test as async",
     "integration: mark test as integration test",
