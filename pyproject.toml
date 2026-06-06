@@ -6,8 +6,8 @@ readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.11"
 dependencies = [
-    "chuk-mcp-server>=0.17",
-    "chuk-artifacts>=0.6.1",
+    "chuk-mcp-server>=0.25.4",
+    "chuk-artifacts>=0.11.3",
     "httpx>=0.27.0",
     "pydantic>=2.0.0",
     "chuk-virtual-fs>=0.3.1",
